@@ -1,10 +1,15 @@
 Mask DINO: Towards A Unified Transformer-based Framework for Object Detection and Segmentation
 ========
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/mask-dino-towards-a-unified-transformer-based/instance-segmentation-on-coco-minival)](https://paperswithcode.com/sota/instance-segmentation-on-coco-minival?p=mask-dino-towards-a-unified-transformer-based)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/mask-dino-towards-a-unified-transformer-based/instance-segmentation-on-coco)](https://paperswithcode.com/sota/instance-segmentation-on-coco?p=mask-dino-towards-a-unified-transformer-based)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/mask-dino-towards-a-unified-transformer-based/semantic-segmentation-on-ade20k)](https://paperswithcode.com/sota/semantic-segmentation-on-ade20k?p=mask-dino-towards-a-unified-transformer-based)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/mask-dino-towards-a-unified-transformer-based/panoptic-segmentation-on-coco-minival)](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-minival?p=mask-dino-towards-a-unified-transformer-based)
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/mask-dino-towards-a-unified-transformer-based/panoptic-segmentation-on-coco-test-dev)](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-test-dev?p=mask-dino-towards-a-unified-transformer-based)
 
 By [Feng Li*](https://fengli-ust.github.io/), [Hao Zhang*](https://scholar.google.com/citations?user=B8hPxMQAAAAJ&hl=zh-CN), Huaizhe xu, [Shilong Liu](https://www.lsl.zone/), [Lei Zhang](https://scholar.google.com/citations?hl=zh-CN&user=fIlGZToAAAAJ), [Lionel M. Ni](https://scholar.google.com/citations?hl=zh-CN&user=OzMYwDIAAAAJ), and [Heung-Yeung Shum](https://scholar.google.com.hk/citations?user=9akH-n8AAAAJ&hl=en).
 
 This repository is an official implementation of the [Mask DINO: Towards A Unified Transformer-based
-Framework for Object Detection and Segmentation]().  Code will be available soon, please stay tuned!
+Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.02777).  Code will be available soon, please stay tuned!
 
 ## News
 [2022/5][DN-DETR](https://arxiv.org/abs/2203.01305) is accepted to CVPR 2022 as an **Oral** presentation. Code is now avaliable [here](https://github.com/IDEA-opensource/DN-DETR).
@@ -36,7 +41,7 @@ We have established the best results on all three segmentation tasks to date.
 ![MaskDINO](figures/panoptic.png)
 ### Semantic segementation
 ![MaskDINO](figures/semantic.png)
-### For more experimental results and ablation study, please refer to our [paper]().
+### For more experimental results and ablation study, please refer to our [paper](https://arxiv.org/pdf/2206.02777.pdf).
 ## Model
 We build upon the object detection model [DINO:DETR with Improved DeNoising Anchor Boxes for End-to-End Object Detection](https://arxiv.org/abs/2203.03605) and extend it to segmentation tasks with minimal modifications.
 ![MaskDINO](figures/framework.jpg)
@@ -44,7 +49,7 @@ We build upon the object detection model [DINO:DETR with Improved DeNoising Anch
 
 
 ## Links
-Our work is based on [DINO](https://arxiv.org/abs/2203.03605) and is also closely related to previous work [DN-DETR]((https://arxiv.org/abs/2203.01305)) and [DAB-DETR](https://arxiv.org/abs/2201.12329).
+Our work is based on [DINO](https://arxiv.org/abs/2203.03605) and is also closely related to previous work [DN-DETR](https://arxiv.org/abs/2203.01305) and [DAB-DETR](https://arxiv.org/abs/2201.12329).
 <p>
 <font size=3><b>DINO: DETR with Improved DeNoising Anchor Boxes for End-to-End Object Detection.</b></font>
 <br>
@@ -77,9 +82,9 @@ Our work is based on [DINO](https://arxiv.org/abs/2203.03605) and is also closel
 
 ## Bibtex
 If you find our work helpful for your research, please consider citing the following BibTeX entry.   
-> @article{li2022dn,  
+> @misc{li2022mask,  
   &emsp;&emsp;title={Mask DINO: Towards A Unified Transformer-based Framework for Object Detection and Segmentation},  
-  &emsp;&emsp;author={Li, Feng and Zhang, Hao and Liu, Shilong and Guo, Jian and Ni, Lionel M and Zhang, Lei},  
-  &emsp;&emsp;journal={arXiv preprint arXiv:2203.01305},  
-  &emsp;&emsp;year={2022}   
-}
+  &emsp;&emsp;author={Feng Li and Hao Zhang and Huaizhe xu and Shilong Liu and Lei Zhang and Lionel M. Ni and Heung-Yeung Shum},  
+  &emsp;&emsp;journal={arXiv preprint arXiv:2206.02777},  
+  &emsp;&emsp;year={2022} 
+>}
