@@ -82,9 +82,13 @@ Our work is based on [DINO](https://arxiv.org/abs/2203.03605) and is also closel
 
 ## Bibtex
 If you find our work helpful for your research, please consider citing the following BibTeX entry.   
-> @misc{li2022mask,  
-  &emsp;&emsp;title={Mask DINO: Towards A Unified Transformer-based Framework for Object Detection and Segmentation},  
-  &emsp;&emsp;author={Feng Li and Hao Zhang and Huaizhe xu and Shilong Liu and Lei Zhang and Lionel M. Ni and Heung-Yeung Shum},  
-  &emsp;&emsp;journal={arXiv preprint arXiv:2206.02777},  
-  &emsp;&emsp;year={2022} 
->}
+```
+@misc{li2022mask,
+      title={Mask DINO: Towards A Unified Transformer-based Framework for Object Detection and Segmentation}, 
+      author={Feng Li and Hao Zhang and Huaizhe xu and Shilong Liu and Lei Zhang and Lionel M. Ni and Heung-Yeung Shum},
+      year={2022},
+      eprint={2206.02777},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
