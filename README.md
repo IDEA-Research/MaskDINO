@@ -14,6 +14,8 @@ Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.0277
 Code will be available soon, please stay tuned!
 
 ## News
+[2022/9]: We release a toolbox [detrex](https://github.com/IDEA-Research/detrex) that provides many state-of-the-art Transformer-based detection algorithms with better performance. Mask DINO will also be released there.  Welcome to use it!
+
 [2022/7] Code for [DINO](https://arxiv.org/pdf/2203.03605.pdf) is available [here](https://github.com/IDEACVR/DINO)!
 
 [2022/5][DN-DETR](https://arxiv.org/abs/2203.01305) is accepted to CVPR 2022 as an **Oral** presentation. Code is now avaliable [here](https://github.com/IDEA-opensource/DN-DETR).
