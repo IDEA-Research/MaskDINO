@@ -1,4 +1,8 @@
-# Copyright (c) IDEA, Inc. and its affiliates. All Rights Reserved
+# ------------------------------------------------------------------------
+# DINO
+# Copyright (c) 2022 IDEA. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
 """
 MaskDINO Training Script.
 
@@ -70,26 +74,6 @@ from detectron2.engine import (
     SimpleTrainer
 )
 import weakref
-
-class Default_loading(DetectionCheckpointer):
-    """
-    if you have trouble loading models, you can try this checkpointer, sometimes d2 fails to load all the weights.
-    """
-    def _load_model(self, checkpoint):
-        model_dict=self.model.state_dict()
-        # TODO: handle panoptic resume for class_embed
-        pretrained_dict = {k: v for k, v in checkpoint['model'].items() if
-                           k in model_dict}
-        unmatched_dict = {k: v for k, v in checkpoint['model'].items() if
-                          k not in model_dict}
-        if pretrained_dict == {}:
-            # train first iteration, loading the backbone
-            pretrained_dict = {'backbone.'+str(k): v for k, v in checkpoint['model'].items() if 'backbone.'+str(k) in model_dict}
-            unmatched_dict = {'backbone.'+str(k): v for k, v in checkpoint['model'].items() if 'backbone.'+str(k) not in model_dict}
-        print("matched keys!!!", pretrained_dict.keys())
-        print("unmatched_dict keys!!!", unmatched_dict.keys())
-        model_dict.update(pretrained_dict)
-        self.model.load_state_dict(model_dict)
 
 class Trainer(DefaultTrainer):
     """
