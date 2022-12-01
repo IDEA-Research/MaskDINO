@@ -6,22 +6,15 @@ Mask DINO <img src="figures/dinosaur.png" width="30">
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/mask-dino-towards-a-unified-transformer-based-1/panoptic-segmentation-on-coco-minival)](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-minival?p=mask-dino-towards-a-unified-transformer-based-1)
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/mask-dino-towards-a-unified-transformer-based-1/panoptic-segmentation-on-coco-test-dev)](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-test-dev?p=mask-dino-towards-a-unified-transformer-based-1)
 
-By [Feng Li*](https://fengli-ust.github.io/), [Hao Zhang*](https://scholar.google.com/citations?user=B8hPxMQAAAAJ&hl=zh-CN), [Huaizhe Xu](https://scholar.google.com/citations?user=zgaTShsAAAAJ&hl=en&scioq=Huaizhe+Xu), [Shilong Liu](https://www.lsl.zone/), [Lei Zhang](https://scholar.google.com/citations?hl=zh-CN&user=fIlGZToAAAAJ), [Lionel M. Ni](https://scholar.google.com/citations?hl=zh-CN&user=OzMYwDIAAAAJ), and [Heung-Yeung Shum](https://scholar.google.com.hk/citations?user=9akH-n8AAAAJ&hl=en).
+[Feng Li*](https://fengli-ust.github.io/), [Hao Zhang*](https://scholar.google.com/citations?user=B8hPxMQAAAAJ&hl=zh-CN), [Huaizhe Xu](https://scholar.google.com/citations?user=zgaTShsAAAAJ&hl=en&scioq=Huaizhe+Xu), [Shilong Liu](https://www.lsl.zone/), [Lei Zhang](https://scholar.google.com/citations?hl=zh-CN&user=fIlGZToAAAAJ), [Lionel M. Ni](https://scholar.google.com/citations?hl=zh-CN&user=OzMYwDIAAAAJ), and [Heung-Yeung Shum](https://scholar.google.com.hk/citations?user=9akH-n8AAAAJ&hl=en).
 
-This repository is an official implementation of the [Mask DINO: Towards A Unified Transformer-based
-Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.02777) (DINO pronounced `daɪnoʊ' as in dinosaur).
-
-Code will be available soon, please stay tuned!
-
+This repository is the official implementation of the [Mask DINO: Towards A Unified Transformer-based
+Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.02777) (DINO pronounced `daɪnoʊ' as in dinosaur). Our code is based on [detectron2](https://github.com/facebookresearch/detectron2).
 
 <details close>
-<summary> <font size=4><strong>News</strong></font> </summary>
+<summary> <font size=8><strong>News</strong></font> </summary>
 
 [2022/9] We release a toolbox [**detrex**](https://github.com/IDEA-Research/detrex) that provides state-of-the-art Transformer-based detection algorithms. It includes DINO **with better performance** and Mask DINO will also be released with detrex implementation. Welcome to use it! </br>
-
-## News
-[2022/9]: We release a toolbox <font size=4>[**detrex**](https://github.com/IDEA-Research/detrex)</font> that provides state-of-the-art Transformer-based detection algorithms. It includes DINO **with better performance** and Mask DINO will also be released with detrex implementation. Welcome to use it! </br>
-
   - Supports Now: [DETR](https://arxiv.org/abs/2005.12872), [Deformble DETR](https://arxiv.org/abs/2010.04159), [Conditional DETR](https://arxiv.org/abs/2108.06152), [Group-DETR](https://arxiv.org/abs/2207.13085), [DAB-DETR](https://arxiv.org/abs/2201.12329), [DN-DETR](https://arxiv.org/abs/2203.01305), [DINO](https://arxiv.org/abs/2203.03605).
 
 [2022/7] Code for [DINO](https://arxiv.org/pdf/2203.03605.pdf) is available [here](https://github.com/IDEACVR/DINO)!
@@ -35,26 +28,31 @@ Code will be available soon, please stay tuned!
 [2022/3]We build a repo [Awesome Detection Transformer](https://github.com/IDEACVR/awesome-detection-transformer) to present papers about transformer for detection and segmentation. Welcome to your attention!
 </details>
 
+
 ### Features 
 
-* A unified architecture for object detection, panoptic, instance and semantic segmentation.
-* Achieve task and data cooperation between detection and segmentation.
-* State-of-the-art performance under the same setting.
-* Support major detection and segmentation datasets: COCO, ADE20K, Cityscapes,
+* A **unified** architecture for object detection, panoptic, instance and semantic segmentation.
+* Achieve **task and data cooperation** between detection and segmentation.
+* **State-of-the-art** performance under the same setting.
+* Support major detection and segmentation datasets: COCO, ADE20K, Cityscapes.
+
 
 ### Code Updates
 
-* [2022/12] Our code is available! Achieve <strong>51.7</strong> and <strong>59.0</strong> AP with a ResNet-50 and SwinL without extra detection data on COCO, better detection performance compared with DINO!
+* [2022/11] Our code is available! Mask DINO further Achieves <strong>51.7</strong> and <strong>59.0</strong> AP on COCO with a ResNet-50 and SwinL without extra detection data, **outperforming DINO** under the same setting!.
 
 * [2022/6] We release a unified detection and segmentation model [Mask DINO](https://arxiv.org/pdf/2206.02777.pdf) that achieves the best results on all the three segmentation tasks (**54.7** AP on [COCO instance leaderboard](https://paperswithcode.com/sota/instance-segmentation-on-coco), **59.5** PQ on [COCO panoptic leaderboard](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-test-dev), and **60.8** mIoU on [ADE20K semantic leaderboard](https://paperswithcode.com/sota/semantic-segmentation-on-ade20k))!.
 
 
-![MaskDINO](figures/framework.jpg)
 
+
+***
 
 ## Installation
 
 See [installation instructions](INSTALL.md).
+
+
 
 ## Getting Started
 
@@ -65,6 +63,10 @@ See [Preparing Datasets for MaskDINO](datasets/README.md).
 See [Getting Started](#getting-started).
 
 See [More Usage](#more-usage).
+
+![MaskDINO](figures/framework.jpg)
+
+***
 
 # Results
 
@@ -187,8 +189,11 @@ hidden dimension `1024` (`hid 1024`) and not using mask-enhance initialization (
 
 </tbody></table>
 
+You can also find all these models [here](https://github.com/IDEA-Research/detrex-storage/releases/tag/maskdino-v0.1.0).
+
 All models were trained with  **4** NVIDIA A100 GPUs (ResNet-50 based models) or **8** NVIDIA A100 GPUs (Swin-L based models).
 
+We will release more pretrained models in the future.
 # Getting Started
 
 In the above tables, the "Name" column contains a link `config_path` to the config file, and the corresponding model checkpoints
@@ -198,7 +203,7 @@ If your dataset files are not under this repo, you need to add `export DETECTRON
 to link the dataset into this repo before the
 following command first.
 #### Evalaluate our pretrained models
-* Running 
+* You can download our pretrained models and evaluate them with the following commands.
   ```sh
   python train_net.py --eval-only --num-gpus 8 --config-file config_path MODEL.WEIGHTS /path/to/checkpoint_file
   ```
@@ -217,12 +222,11 @@ following command first.
   memory, you may also train with 16 GPUs with distributed training on two nodes.
 * We use total batch size 16 for all our models. If train on 1 GPU, you need to figure out learning rate and batch size by yourself
     ```sh
-  python train_net.py --num-gpus 8 --config-file config_path --num-gpus 1 SOLVER.IMS_PER_BATCH SET_TO_SOME_REASONABLE_VALUE SOLVER.BASE_LR SET_TO_SOME_REASONABLE_VALUE
+  python train_net.py --num-gpus 1 SOLVER.IMS_PER_BATCH SET_TO_SOME_REASONABLE_VALUE SOLVER.BASE_LR SET_TO_SOME_REASONABLE_VALUE
   ```
 
 You can also refer to [Getting Started with Detectron2](https://github.com/facebookresearch/detectron2/blob/master/GETTING_STARTED.md) for full usage.
 
-We will release more pretrained models in the future.
 
 # More Usage
 
