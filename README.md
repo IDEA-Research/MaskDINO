@@ -13,10 +13,15 @@ Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.0277
 
 Code will be available soon, please stay tuned!
 
+
 <details close>
 <summary> <font size=4><strong>News</strong></font> </summary>
 
 [2022/9] We release a toolbox [**detrex**](https://github.com/IDEA-Research/detrex) that provides state-of-the-art Transformer-based detection algorithms. It includes DINO **with better performance** and Mask DINO will also be released with detrex implementation. Welcome to use it! </br>
+
+## News
+[2022/9]: We release a toolbox <font size=4>[**detrex**](https://github.com/IDEA-Research/detrex)</font> that provides state-of-the-art Transformer-based detection algorithms. It includes DINO **with better performance** and Mask DINO will also be released with detrex implementation. Welcome to use it! </br>
+
   - Supports Now: [DETR](https://arxiv.org/abs/2005.12872), [Deformble DETR](https://arxiv.org/abs/2010.04159), [Conditional DETR](https://arxiv.org/abs/2108.06152), [Group-DETR](https://arxiv.org/abs/2207.13085), [DAB-DETR](https://arxiv.org/abs/2201.12329), [DN-DETR](https://arxiv.org/abs/2203.01305), [DINO](https://arxiv.org/abs/2203.03605).
 
 [2022/7] Code for [DINO](https://arxiv.org/pdf/2203.03605.pdf) is available [here](https://github.com/IDEACVR/DINO)!
@@ -30,7 +35,6 @@ Code will be available soon, please stay tuned!
 [2022/3]We build a repo [Awesome Detection Transformer](https://github.com/IDEACVR/awesome-detection-transformer) to present papers about transformer for detection and segmentation. Welcome to your attention!
 </details>
 
-
 ### Features 
 
 * A unified architecture for object detection, panoptic, instance and semantic segmentation.
@@ -40,7 +44,7 @@ Code will be available soon, please stay tuned!
 
 ### Code Updates
 
-* [2022/11] Our code is available! Achieve <strong>51.7</strong> and <strong>59.0</strong> AP with a ResNet-50 and SwinL without extra detection data on COCO, better detection performance compared with DINO!
+* [2022/12] Our code is available! Achieve <strong>51.7</strong> and <strong>59.0</strong> AP with a ResNet-50 and SwinL without extra detection data on COCO, better detection performance compared with DINO!
 
 * [2022/6] We release a unified detection and segmentation model [Mask DINO](https://arxiv.org/pdf/2206.02777.pdf) that achieves the best results on all the three segmentation tasks (**54.7** AP on [COCO instance leaderboard](https://paperswithcode.com/sota/instance-segmentation-on-coco), **59.5** PQ on [COCO panoptic leaderboard](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-test-dev), and **60.8** mIoU on [ADE20K semantic leaderboard](https://paperswithcode.com/sota/semantic-segmentation-on-ade20k))!.
 
