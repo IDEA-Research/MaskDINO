@@ -161,7 +161,7 @@ hidden dimension `1024` (`hid 1024`) and not using mask-enhance initialization (
 </tr>
 </tbody></table>
 
-### ADE20K Semantic Segmentation
+### Semantic Segmentation
 
 <table><tbody>
 <!-- START TABLE -->
