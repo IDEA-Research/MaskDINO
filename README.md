@@ -68,10 +68,10 @@ See [More Usage](#more-usage).
 ***
 
 # Results
-
+In this part, we present the clean models that do not use extra detection data or tricks.
 ### COCO Instance Segmentation and Object Detection
-In this part, we follow DINO to use hidden dimension `2048` in the encoder by default. We also use the mask-enhanced
-box initialization proposed in our paper by default. To better present our model, we also list the models trained with 
+ we follow DINO to use hidden dimension `2048` in the encoder of feedforward by default. We also use the mask-enhanced
+box initialization proposed in our paper in instance segmentation and detection. To better present our model, we also list the models trained with 
 hidden dimension `1024` (`hid 1024`) and not using mask-enhance initialization (`no mask enhance`) in this table.
 <table><tbody>
 <!-- START TABLE -->
@@ -161,7 +161,7 @@ hidden dimension `1024` (`hid 1024`) and not using mask-enhance initialization (
 </tbody></table>
 
 ### Semantic Segmentation
-
+We use hidden dimension `1024` and 100 queries for semantic segmentation.
 <table><tbody>
 <!-- START TABLE -->
 <!-- TABLE HEADER -->
