@@ -43,17 +43,19 @@ Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.0277
 
 * [2022/6] We propose a unified detection and segmentation model [Mask DINO](https://arxiv.org/pdf/2206.02777.pdf) that achieves the best results on all the three segmentation tasks (**54.7** AP on [COCO instance leaderboard](https://paperswithcode.com/sota/instance-segmentation-on-coco), **59.5** PQ on [COCO panoptic leaderboard](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-test-dev), and **60.8** mIoU on [ADE20K semantic leaderboard](https://paperswithcode.com/sota/semantic-segmentation-on-ade20k))!
 
-### Todo list
+<details open>
+<summary> <font size=8><strong>Todo list</strong></font> </summary>
 
-- [x] TODO: release code and checkpoints
+- [x] Release code and checkpoints
   
-- [ ] TODO: release model conversion checkpointer from DINO to MaskDINO
+- [ ] Release model conversion checkpointer from DINO to MaskDINO
  
-- [ ] TODO: release GPU cluster submit scripts based on submitit for multi-node training
+- [ ] Release GPU cluster submit scripts based on submitit for multi-node training
  
-- [ ] TODO: release EMA training for large models
+- [ ] Release EMA training for large models
  
-- [ ] TODO: release more large models
+- [ ] Release more large models
+</details>
 
 
 
