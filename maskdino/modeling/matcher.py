@@ -16,7 +16,8 @@ from torch.cuda.amp import autocast
 
 from detectron2.projects.point_rend.point_features import point_sample
 from maskdino.utils.box_ops import generalized_box_iou,box_cxcywh_to_xyxy
-import random
+
+
 def batch_dice_loss(inputs: torch.Tensor, targets: torch.Tensor):
     """
     Compute the DICE loss, similar to generalized IOU for masks
@@ -107,8 +108,6 @@ class HungarianMatcher(nn.Module):
         bs, num_queries = outputs["pred_logits"].shape[:2]
 
         indices = []
-        # if random.randint(1,1000)<10:
-        #     print("cost match", cost)
 
         # Iterate through batch size
         for b in range(bs):
@@ -122,7 +121,6 @@ class HungarianMatcher(nn.Module):
                 cost_bbox = torch.tensor(0).to(out_bbox)
                 cost_giou = torch.tensor(0).to(out_bbox)
 
-            # out_prob = outputs["pred_logits"][b].softmax(-1)  # [num_queries, num_classes]
             out_prob = outputs["pred_logits"][b].sigmoid()  # [num_queries, num_classes]
             tgt_ids = targets[b]["labels"]
             # focal loss
@@ -177,7 +175,6 @@ class HungarianMatcher(nn.Module):
                 cost_giou[:,~isthing]=cost_giou[:,isthing].mean()
                 cost_bbox[cost_bbox.isnan()]=0.0
                 cost_giou[cost_giou.isnan()]=0.0
-                # cost_class[:,~isthing]=cost_class[:,~isthing]/2.0
             C = (
                 self.cost_mask * cost_mask
                 + self.cost_class * cost_class
@@ -186,15 +183,6 @@ class HungarianMatcher(nn.Module):
                 +self.cost_giou*cost_giou
             )
             C = C.reshape(num_queries, -1).cpu()
-            # C = (
-            #     self.cost_mask * cost_mask
-            #     + self.cost_class * cost_class
-            #     + self.cost_dice * cost_dice
-            #     + self.cost_box*cost_bbox
-            #     +self.cost_giou*cost_giou
-            # )
-            # C = C.reshape(num_queries, -1).cpu()
-
             indices.append(linear_sum_assignment(C))
 
         return [

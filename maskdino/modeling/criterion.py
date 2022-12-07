@@ -23,7 +23,7 @@ from detectron2.projects.point_rend.point_features import (
 from ..utils.misc import is_dist_avail_and_initialized, nested_tensor_from_tensor_list
 from maskdino.utils import box_ops
 
-# from maskdino.maskformer_model import sigmoid_focal_loss
+
 def sigmoid_focal_loss(inputs, targets, num_boxes, alpha: float = 0.25, gamma: float = 2):
     """
     Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
@@ -374,7 +374,6 @@ class SetCriterion(nn.Module):
                 l_dict.update(self.get_loss(loss, output_known_lbs_bboxes, targets, exc_idx, num_masks*scalar))
             l_dict = {k + f'_dn': v for k, v in l_dict.items()}
             losses.update(l_dict)
-            # import pdb;pdb.set_trace()
         elif self.dn != "no":
             l_dict = dict()
             l_dict['loss_bbox_dn'] = torch.as_tensor(0.).to('cuda')
@@ -407,7 +406,6 @@ class SetCriterion(nn.Module):
                                 self.get_loss(loss, out_, targets, exc_idx, num_masks * scalar))
                         l_dict = {k + f'_dn_{i}': v for k, v in l_dict.items()}
                         losses.update(l_dict)
-                        # import pdb;pdb.set_trace()
                     elif self.dn != "no":
                         l_dict = dict()
                         l_dict[f'loss_bbox_dn_{i}'] = torch.as_tensor(0.).to('cuda')

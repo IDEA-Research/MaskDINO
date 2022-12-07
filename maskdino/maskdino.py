@@ -1,5 +1,4 @@
 # ------------------------------------------------------------------------
-# DINO
 # Copyright (c) 2022 IDEA. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
@@ -339,7 +338,6 @@ class MaskDINO(nn.Module):
             # pad gt
             h, w = targets_per_image.image_size
             image_size_xyxy = torch.as_tensor([w, h, w, h], dtype=torch.float, device=self.device)
-            # print(images.tensor.shape[-2:], image_size_xyxy)
 
             gt_masks = targets_per_image.gt_masks
             padded_masks = torch.zeros((gt_masks.shape[0], h_pad, w_pad), dtype=gt_masks.dtype, device=gt_masks.device)
@@ -360,7 +358,6 @@ class MaskDINO(nn.Module):
             # pad gt
             h, w = targets_per_image.image_size
             image_size_xyxy = torch.as_tensor([w, h, w, h], dtype=torch.float, device=self.device)
-            # print(images.tensor.shape[-2:], image_size_xyxy)
 
             gt_masks = targets_per_image.gt_masks
             padded_masks = torch.zeros((gt_masks.shape[0], h_pad, w_pad), dtype=gt_masks.dtype, device=gt_masks.device)
@@ -387,9 +384,7 @@ class MaskDINO(nn.Module):
         else:
             T = self.pano_temp
             mask_cls = mask_cls.sigmoid()
-
             if self.transform_eval:
-                # mask_cls = (mask_cls * 2.5 + 1.0).sigmoid()
                 mask_cls = F.softmax(mask_cls / T, dim=-1)  # already sigmoid
             mask_pred = mask_pred.sigmoid()
             semseg = torch.einsum("qc,qhw->chw", mask_cls, mask_pred)

@@ -23,6 +23,7 @@ from .position_encoding import PositionEmbeddingSine
 from ...utils.utils import _get_clones, _get_activation_fn
 from .ops.modules import MSDeformAttn
 
+
 def build_pixel_decoder(cfg, input_shape):
     """
     Build a pixel decoder from `cfg.MODEL.MaskDINO.PIXEL_DECODER_NAME`.
@@ -36,6 +37,7 @@ def build_pixel_decoder(cfg, input_shape):
             f"Please implement forward_features for {name} to only return mask features."
         )
     return model
+
 
 # MSDeformAttn Transformer encoder in deformable detr
 class MSDeformAttnTransformerEncoderOnly(nn.Module):

@@ -1,5 +1,4 @@
 # ------------------------------------------------------------------------
-# DINO
 # Copyright (c) 2022 IDEA. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
@@ -32,7 +31,6 @@ class MaskDINOHead(nn.Module):
         transformer_predictor: nn.Module,
     ):
         """
-        NOTE: this interface is experimental.
         Args:
             input_shape: shapes (channels and stride) of the input features
             num_classes: number of classes to predict
@@ -45,9 +43,6 @@ class MaskDINOHead(nn.Module):
         super().__init__()
         input_shape = sorted(input_shape.items(), key=lambda x: x[1].stride)
         self.in_features = [k for k, v in input_shape]
-        feature_strides = [v.stride for k, v in input_shape]
-        feature_channels = [v.channels for k, v in input_shape]
-
         self.ignore_value = ignore_value
         self.common_stride = 4
         self.loss_weight = loss_weight

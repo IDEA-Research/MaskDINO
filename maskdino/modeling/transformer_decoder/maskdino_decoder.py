@@ -189,8 +189,10 @@ class MaskDINODecoder(nn.Module):
         return ret
 
     def prepare_for_dn(self, targets, tgt, refpoint_emb, batch_size):
-        # modified from dn-detr. You can refer to dn-detr https://github.com/IDEA-Research/DN-DETR/blob/main/models/dn_dab_deformable_detr/dn_components.py ffor more details
         """
+        modified from dn-detr. You can refer to dn-detr
+        https://github.com/IDEA-Research/DN-DETR/blob/main/models/dn_dab_deformable_detr/dn_components.py
+        for more details
             :param dn_args: scalar, noise_scale
             :param tgt: original tgt (content) in the matching part
             :param refpoint_emb: positional anchor queries in the matching part

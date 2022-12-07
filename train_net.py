@@ -1,5 +1,4 @@
 # ------------------------------------------------------------------------
-# DINO
 # Copyright (c) 2022 IDEA. All Rights Reserved.
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
@@ -74,6 +73,7 @@ from detectron2.engine import (
     SimpleTrainer
 )
 import weakref
+
 
 class Trainer(DefaultTrainer):
     """
@@ -351,7 +351,6 @@ def setup(args):
     cfg.merge_from_list(args.opts)
     cfg.freeze()
     default_setup(cfg, args)
-    # Setup logger for "mask_former" module
     setup_logger(output=cfg.OUTPUT_DIR, distributed_rank=comm.get_rank(), name="maskdino")
     return cfg
 

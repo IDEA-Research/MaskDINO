@@ -1,4 +1,9 @@
-# Copyright (c) IDEA, Inc. and its affiliates.
+# ------------------------------------------------------------------------
+# Copyright (c) 2022 IDEA. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+# Modified from Mask2Former https://github.com/facebookresearch/Mask2Former by Feng Li and Hao Zhang.
+# ------------------------------------------------------------------------------
 from . import data  # register all new datasets
 from . import modeling
 
