@@ -20,30 +20,6 @@ from ..pixel_decoder.maskdino_encoder import build_pixel_decoder
 
 @SEM_SEG_HEADS_REGISTRY.register()
 class MaskDINOHead(nn.Module):
-    def _load_from_state_dict(
-        self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
-    ):
-        version = local_metadata.get("version", None)
-        if version is None or version < 2:
-            # Do not warn if train from scratch
-            scratch = True
-            logger = logging.getLogger(__name__)
-            for k in list(state_dict.keys()):
-                newk = k
-                if "sem_seg_head" in k and not k.startswith(prefix + "predictor"):
-                    newk = k.replace(prefix, prefix + "pixel_decoder.")
-                    # logger.debug(f"{k} ==> {newk}")
-                if newk != k:
-                    state_dict[newk] = state_dict[k]
-                    del state_dict[k]
-                    scratch = False
-
-            if not scratch:
-                logger.warning(
-                    f"Weight format of {self.__class__.__name__} have changed! "
-                    "Please upgrade your models. Applying automatic conversion now ..."
-                )
-
     @configurable
     def __init__(
         self,
