@@ -46,9 +46,13 @@ Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.0277
 ### Todo list
 
 - [x] TODO: release code and checkpoints
+  
 -[ ] TODO: release model conversion checkpointer from DINO to MaskDINO
+ 
 -[ ] TODO: release GPU cluster submit scripts based on submitit for multi-node training
+ 
 -[ ] TODO: release EMA training for large models
+ 
 -[ ] TODO: release more large models
 
 
