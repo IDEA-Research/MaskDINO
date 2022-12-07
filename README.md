@@ -13,6 +13,7 @@ Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.0277
 
 <details close>
 <summary> <font size=8><strong>News</strong></font> </summary>
+
 [2022/9] We release a toolbox [**detrex**](https://github.com/IDEA-Research/detrex) that provides state-of-the-art Transformer-based detection algorithms. It includes DINO **with better performance** and Mask DINO will also be released with detrex implementation. Welcome to use it! </br>
   - Supports Now: [DETR](https://arxiv.org/abs/2005.12872), [Deformble DETR](https://arxiv.org/abs/2010.04159), [Conditional DETR](https://arxiv.org/abs/2108.06152), [Group-DETR](https://arxiv.org/abs/2207.13085), [DAB-DETR](https://arxiv.org/abs/2201.12329), [DN-DETR](https://arxiv.org/abs/2203.01305), [DINO](https://arxiv.org/abs/2203.03605).
 
@@ -42,6 +43,13 @@ Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.0277
 
 * [2022/6] We propose a unified detection and segmentation model [Mask DINO](https://arxiv.org/pdf/2206.02777.pdf) that achieves the best results on all the three segmentation tasks (**54.7** AP on [COCO instance leaderboard](https://paperswithcode.com/sota/instance-segmentation-on-coco), **59.5** PQ on [COCO panoptic leaderboard](https://paperswithcode.com/sota/panoptic-segmentation-on-coco-test-dev), and **60.8** mIoU on [ADE20K semantic leaderboard](https://paperswithcode.com/sota/semantic-segmentation-on-ade20k))!
 
+### Todo list
+
+- [x] TODO: release code and checkpoints
+-[ ] TODO: release model conversion checkpointer from DINO to MaskDINO
+-[ ] TODO: release GPU cluster submit scripts based on submitit for multi-node training
+-[ ] TODO: release EMA training for large models
+-[ ] TODO: release more large models
 
 
 
