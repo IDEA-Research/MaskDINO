@@ -1,5 +1,8 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# Modified by Bowen Cheng from https://github.com/facebookresearch/detr/blob/master/d2/detr/dataset_mapper.py
+# ------------------------------------------------------------------------
+# Copyright (c) 2022 IDEA. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+# Modified from Mask2Former https://github.com/facebookresearch/Mask2Former by Feng Li.
 import copy
 import logging
 

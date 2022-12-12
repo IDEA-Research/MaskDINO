@@ -52,6 +52,7 @@ def sigmoid_focal_loss(inputs, targets, num_boxes, alpha: float = 0.25, gamma: f
 
     return loss.mean(1).sum() / num_boxes
 
+
 def dice_loss(
         inputs: torch.Tensor,
         targets: torch.Tensor,
@@ -330,7 +331,7 @@ class SetCriterion(nn.Module):
         assert loss in loss_map, f"do you really want to compute {loss} loss?"
         return loss_map[loss](outputs, targets, indices, num_masks)
 
-    def forward(self, outputs, targets,mask_dict=None):
+    def forward(self, outputs, targets, mask_dict=None):
         """This performs the loss computation.
         Parameters:
              outputs: dict of tensors, see the output specification of the model for the format
@@ -397,7 +398,6 @@ class SetCriterion(nn.Module):
                 else:
                     start = 1
                 if i>=start:
-                # if i>=1:
                     if self.dn != "no" and mask_dict is not None:
                         out_=output_known_lbs_bboxes['aux_outputs'][i]
                         l_dict = {}
@@ -418,7 +418,7 @@ class SetCriterion(nn.Module):
         # interm_outputs loss
         if 'interm_outputs' in outputs:
             interm_outputs = outputs['interm_outputs']
-            indices = self.matcher(interm_outputs, targets)  # cost=["cls", "box"]
+            indices = self.matcher(interm_outputs, targets)
             for loss in self.losses:
                 l_dict = self.get_loss(loss, interm_outputs, targets, indices, num_masks)
                 l_dict = {k + f'_interm': v for k, v in l_dict.items()}

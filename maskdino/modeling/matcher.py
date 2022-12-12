@@ -81,7 +81,8 @@ class HungarianMatcher(nn.Module):
     while the others are un-matched (and thus treated as non-objects).
     """
 
-    def __init__(self, cost_class: float = 1, cost_mask: float = 1, cost_dice: float = 1, num_points: int = 0,cost_box=0,cost_giou=0, panoptic_on=False):
+    def __init__(self, cost_class: float = 1, cost_mask: float = 1, cost_dice: float = 1, num_points: int = 0,
+                 cost_box: float = 0, cost_giou: float = 0, panoptic_on: bool = False):
         """Creates the matcher
 
         Params:
@@ -104,7 +105,7 @@ class HungarianMatcher(nn.Module):
 
     @torch.no_grad()
     def memory_efficient_forward(self, outputs, targets, cost=["cls", "box", "mask"]):
-        """More memory-friendly matching"""
+        """More memory-friendly matching. Change cost to compute only certain loss in matching"""
         bs, num_queries = outputs["pred_logits"].shape[:2]
 
         indices = []
@@ -113,7 +114,6 @@ class HungarianMatcher(nn.Module):
         for b in range(bs):
             out_bbox = outputs["pred_boxes"][b]
             if 'box' in cost:
-                # out_bbox=outputs["pred_boxes"][b]
                 tgt_bbox=targets[b]["boxes"]
                 cost_bbox = torch.cdist(out_bbox, tgt_bbox, p=1)
                 cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(out_bbox), box_cxcywh_to_xyxy(tgt_bbox))
@@ -170,17 +170,18 @@ class HungarianMatcher(nn.Module):
             
             # Final cost matrix
             if self.panoptic_on:
-                isthing=tgt_ids<80
-                cost_bbox[:,~isthing]=cost_bbox[:,isthing].mean()
-                cost_giou[:,~isthing]=cost_giou[:,isthing].mean()
-                cost_bbox[cost_bbox.isnan()]=0.0
-                cost_giou[cost_giou.isnan()]=0.0
+                isthing = tgt_ids<80
+                cost_bbox[:, ~isthing] = cost_bbox[:, isthing].mean()
+                cost_giou[:, ~isthing] = cost_giou[:, isthing].mean()
+                cost_bbox[cost_bbox.isnan()] = 0.0
+                cost_giou[cost_giou.isnan()] = 0.0
+
             C = (
                 self.cost_mask * cost_mask
                 + self.cost_class * cost_class
                 + self.cost_dice * cost_dice
                 + self.cost_box*cost_bbox
-                +self.cost_giou*cost_giou
+                + self.cost_giou*cost_giou
             )
             C = C.reshape(num_queries, -1).cpu()
             indices.append(linear_sum_assignment(C))

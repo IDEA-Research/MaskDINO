@@ -1,5 +1,8 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# Modified by Bowen Cheng from https://github.com/facebookresearch/detr/blob/master/d2/detr/dataset_mapper.py
+# ------------------------------------------------------------------------
+# Copyright (c) 2022 IDEA. All Rights Reserved.
+# Licensed under the Apache License, Version 2.0 [see LICENSE for details]
+# ------------------------------------------------------------------------
+# Modified from Mask2Former https://github.com/facebookresearch/Mask2Former by Feng Li.
 import copy
 import logging
 
@@ -10,7 +13,7 @@ from detectron2.config import configurable
 from detectron2.data import detection_utils as utils
 from detectron2.data import transforms as T
 from detectron2.data.transforms import TransformGen
-from detectron2.structures import BitMasks, Instances
+from detectron2.structures import BitMasks, Instances, PolygonMasks
 
 from pycocotools import mask as coco_mask
 
@@ -66,8 +69,6 @@ def build_transform_gen(cfg, is_train):
     return augmentation
 
 
-
-# This is specifically designed for the COCO dataset.
 class COCOInstanceNewBaselineDatasetMapper:
     """
     A callable which takes a dataset dict in Detectron2 Dataset format,
@@ -157,8 +158,6 @@ class COCOInstanceNewBaselineDatasetMapper:
             # USER: Modify this if you want to keep them for some reason.
             for anno in dataset_dict["annotations"]:
                 # Let's always keep mask
-                # if not self.mask_on:
-                #     anno.pop("segmentation", None)
                 anno.pop("keypoints", None)
 
             # USER: Implement additional transformations if you have other types of data
@@ -175,12 +174,13 @@ class COCOInstanceNewBaselineDatasetMapper:
             # [(0,0), (2,0), (0,2)] cropped by a box [(1,0),(2,2)] (XYXY format). The tight
             # bounding box of the cropped triangle should be [(1,0),(2,1)], which is not equal to
             # the intersection of original bounding box and the cropping box.
+            if not instances.has('gt_masks'):  # this is to avoid empty annotation
+                instances.gt_masks = PolygonMasks([])
             instances.gt_boxes = instances.gt_masks.get_bounding_boxes()
             # Need to filter empty instances first (due to augmentation)
             instances = utils.filter_empty_instances(instances)
             # Generate masks from polygon
             h, w = instances.image_size
-            # image_size_xyxy = torch.as_tensor([w, h, w, h], dtype=torch.float)
             if hasattr(instances, 'gt_masks'):
                 gt_masks = instances.gt_masks
                 gt_masks = convert_coco_poly_to_mask(gt_masks.polygons, h, w)
