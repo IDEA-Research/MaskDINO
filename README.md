@@ -139,6 +139,15 @@ hidden dimension `1024` (`hid 1024`) and not using mask-enhance initialization (
 <td align="center">1326</td>
 <td align="center"><a href="https://github.com/IDEA-Research/detrex-storage/releases/download/maskdino-v0.1.0/maskdino_swinl_50ep_300q_hid2048_3sd1_instance_maskenhanced_mask52.3ap_box59.0ap.pth">model</a></td>
 </tr>
+ <tr><td align="left">MaskDINO+O365 data+1.2 x larger image</td>
+<td align="center">Swin-L (IN21k)</td>
+<td align="center">20</td>
+<td align="center">54.5</td>
+<td align="center">---</td>
+<td align="center">223</td>
+<td align="center">1326</td>
+<td align="center">To Release</td>
+</tr>
 </tbody></table>
 
 ### COCO Panoptic Segmentation
@@ -173,6 +182,17 @@ hidden dimension `1024` (`hid 1024`) and not using mask-enhance initialization (
 <td align="center">67.5</td>
 <td align="center"><a href="https://github.com/IDEA-Research/detrex-storage/releases/download/maskdino-v0.1.0/maskdino_swinl_50ep_300q_hid2048_3sd1_panoptic_58.3pq.pth">model</a></td>
 </tr>
+
+ <tr><td align="left">MaskDINO+O365 data+1.2 x larger image</td>
+<td align="center">Swin-L (IN21k)</td>
+<td align="center">20</td>
+<td align="center">59.4</td>
+<td align="center">53.0</td>
+<td align="center">57.7</td>
+<td align="center">67.3</td>
+<td align="center">To Release</td>
+</tr>
+
 </tbody></table>
 
 ### Semantic Segmentation
