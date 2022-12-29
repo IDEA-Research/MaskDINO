@@ -1,4 +1,4 @@
-## Getting Started with Mask2Former
+## Getting Started with MaskDINO
 
 This document provides a brief intro of the usage of **MaskDINO**.
 
