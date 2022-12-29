@@ -6,7 +6,7 @@
 from detectron2.config import CfgNode as CN
 
 
-def add_maskformer2_config(cfg):
+def add_maskdino_config(cfg):
     """
     Add config for MaskDINO.
     """
