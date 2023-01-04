@@ -43,10 +43,10 @@ def setup_cfg(args):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="maskformer2 demo for builtin configs")
+    parser = argparse.ArgumentParser(description="maskdino demo for builtin configs")
     parser.add_argument(
         "--config-file",
-        default="configs/coco/panoptic-segmentation/maskformer2_R50_bs16_50ep.yaml",
+        default="configs/coco/instance-segmentation/maskdino_R50_bs16_50ep_3s.yaml",
         metavar="FILE",
         help="path to config file",
     )
