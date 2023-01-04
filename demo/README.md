@@ -11,7 +11,8 @@ Please see [Getting Started with Detectron2](https://github.com/facebookresearch
 - for example
    - config file at `/configs/coco/instance-segmentation/maskdino_R50_bs16_50ep_3s.yaml`.
    - Model file [MaskDINO (hid 1024) ](https://github.com/IDEA-Research/detrex-storage/releases/download/maskdino-v0.1.0/maskdino_r50_50ep_300q_hid1024_3sd1_instance_maskenhanced_mask46.1ap_box51.5ap.pth)
-3. We provide `demo.py` that is able to demo builtin configs. Run it with:
+2. We provide `demo.py` that is able to demo builtin configs. 
+3. Run it with:
 ```
 cd demo/
 python demo.py --config-file /configs/coco/instance-segmentation/maskdino_R50_bs16_50ep_3s.yaml \
