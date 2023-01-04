@@ -18,7 +18,7 @@ cd demo/
 python demo.py --config-file /configs/coco/instance-segmentation/maskdino_R50_bs16_50ep_3s.yaml \
   --input input1.jpg input2.jpg \
   [--other-options]
-  --opts MODEL.WEIGHTS /path/to/checkpoint_file
+  --opts MODEL.WEIGHTS /path/to/model_file
 ```
 The configs are made for training, therefore we need to specify `MODEL.WEIGHTS` to a model from model zoo for evaluation.
 This command will run the inference and show visualizations in an OpenCV window.
