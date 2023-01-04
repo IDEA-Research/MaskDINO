@@ -30,16 +30,3 @@ to understand its behavior. Some common arguments are:
 * To save outputs to a directory (for images) or a file (for webcam or video), use `--output`.
 
 
-### Training & Evaluation in Command Line
-
-We provide a script `train_net.py`, that is made to train all the configs provided in Mask2Former.
-
-To train a model with "train_net.py", first
-setup the corresponding datasets following
-[datasets/README.md](./datasets/README.md),
-then run:
-```
-python train_net.py --num-gpus 8 \
-  --config-file /configs/coco/instance-segmentation/maskdino_R50_bs16_50ep_3s.yaml
-```
-
