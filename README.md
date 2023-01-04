@@ -69,6 +69,7 @@ See [installation instructions](INSTALL.md).
 
 
 ## Getting Started
+See [Inference Demo with Pre-trained Model](demo/README.md)
 
 See [Results](#results).
 
