@@ -183,8 +183,8 @@ class MaskDINO(nn.Module):
             importance_sample_ratio=cfg.MODEL.MaskDINO.IMPORTANCE_SAMPLE_RATIO,
             dn=cfg.MODEL.MaskDINO.DN,
             dn_losses=dn_losses,
-            panoptic_on=(cfg.MODEL.MaskDINO.TEST.PANOPTIC_ON or cfg.MODEL.MaskDINO.TEST.SEMANTIC_ON) and ~cfg.MODEL.MaskDINO.PANO_BOX_LOSS,
-            semantic_ce_loss=cfg.MODEL.MaskDINO.TEST.SEMANTIC_ON and cfg.MODEL.MaskDINO.SEMANTIC_CE_LOSS and ~cfg.MODEL.MaskDINO.TEST.PANOPTIC_ON,
+            panoptic_on=cfg.MODEL.MaskDINO.PANO_BOX_LOSS,
+            semantic_ce_loss=cfg.MODEL.MaskDINO.TEST.SEMANTIC_ON and cfg.MODEL.MaskDINO.SEMANTIC_CE_LOSS and not cfg.MODEL.MaskDINO.TEST.PANOPTIC_ON,
         )
 
         return {
