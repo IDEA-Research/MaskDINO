@@ -75,7 +75,7 @@ See [Results](#results).
 
 See [Preparing Datasets for MaskDINO](datasets/README.md).
 
-See [Getting Started](#getting-started).
+See [Getting Started](#getting-started-1).
 
 See [More Usage](#more-usage).
 
@@ -257,7 +257,7 @@ following command first.
   memory, you may also train with 16 GPUs with distributed training on two nodes.
 * We use total batch size 16 for all our models. If train on 1 GPU, you need to figure out learning rate and batch size by yourself
     ```sh
-  python train_net.py --num-gpus 1 SOLVER.IMS_PER_BATCH SET_TO_SOME_REASONABLE_VALUE SOLVER.BASE_LR SET_TO_SOME_REASONABLE_VALUE
+  python train_net.py --num-gpus 1 --config-file config_path SOLVER.IMS_PER_BATCH SET_TO_SOME_REASONABLE_VALUE SOLVER.BASE_LR SET_TO_SOME_REASONABLE_VALUE
   ```
 
 You can also refer to [Getting Started with Detectron2](https://github.com/facebookresearch/detectron2/blob/master/GETTING_STARTED.md) for full usage.
