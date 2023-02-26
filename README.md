@@ -208,7 +208,7 @@ We use hidden dimension `1024` and 100 queries for semantic segmentation.
 <th valign="bottom">mIoU</th>
 <th valign="bottom">download</th>
 
- <tr><td align="left">MaskDINO | <a href="configs/cityscapes/semantic-segmentation/maskdino_R50_bs16_90k_steplr.yaml">config</a></td>
+ <tr><td align="left">MaskDINO | <a href="configs/ade20k/semantic-segmentation/maskdino_R50_bs16_160k_steplr.yaml">config</a></td>
 <td align="center">ADE20K</td>
 <td align="center">R50</td>
 <td align="center">160k</td>
