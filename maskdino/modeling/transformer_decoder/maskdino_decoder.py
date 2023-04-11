@@ -346,13 +346,15 @@ class MaskDINODecoder(nn.Module):
         :param hs: content
         :param ref0: whether there are prediction from the first layer
         """
+        device = reference[0].device
+
         if ref0 is None:
             outputs_coord_list = []
         else:
-            outputs_coord_list = [ref0]
+            outputs_coord_list = [ref0.to(device)]
         for dec_lid, (layer_ref_sig, layer_bbox_embed, layer_hs) in enumerate(zip(reference[:-1], self.bbox_embed, hs)):
-            layer_delta_unsig = layer_bbox_embed(layer_hs)
-            layer_outputs_unsig = layer_delta_unsig + inverse_sigmoid(layer_ref_sig)
+            layer_delta_unsig = layer_bbox_embed(layer_hs).to(device)
+            layer_outputs_unsig = layer_delta_unsig + inverse_sigmoid(layer_ref_sig).to(device)
             layer_outputs_unsig = layer_outputs_unsig.sigmoid()
             outputs_coord_list.append(layer_outputs_unsig)
         outputs_coord_list = torch.stack(outputs_coord_list)
