@@ -113,9 +113,10 @@ class TransformerDecoder(nn.Module):
             - valid_ratios/spatial_shapes: bs, nlevel, 2
         """
         output = tgt
+        device = tgt.device
 
         intermediate = []
-        reference_points = refpoints_unsigmoid.sigmoid()
+        reference_points = refpoints_unsigmoid.sigmoid().to(device)
         ref_points = [reference_points]
 
         for layer_id, layer in enumerate(self.layers):
@@ -151,7 +152,7 @@ class TransformerDecoder(nn.Module):
             # iter update
             if self.bbox_embed is not None:
                 reference_before_sigmoid = inverse_sigmoid(reference_points)
-                delta_unsig = self.bbox_embed[layer_id](output)
+                delta_unsig = self.bbox_embed[layer_id](output).to(device)
                 outputs_unsig = delta_unsig + reference_before_sigmoid
                 new_reference_points = outputs_unsig.sigmoid()
 
