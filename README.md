@@ -12,10 +12,11 @@ Mask DINO <img src="figures/dinosaur.png" width="30">
 This repository is the official implementation of the [Mask DINO: Towards A Unified Transformer-based
 Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.02777) (DINO pronounced `daɪnoʊ' as in dinosaur). Our code is based on [detectron2](https://github.com/facebookresearch/detectron2). [detrex](https://github.com/IDEA-Research/detrex) version is opensource simultaneously.
 
+:fire: We release a strong open-set object detection and segmentation model [OpenSeeD](https://arxiv.org/pdf/2303.08131.pdf) based on MaskDINO that achieves the best results on open-set object segmentation tasks. Code and checkpoints are available [here](https://github.com/IDEA-Research/OpenSeeD).
+
 <details close>
 <summary> <font size=8><strong>News</strong></font> </summary>
 
-[2023/4]: We release a strong open-set object detection and segmentation model [OpenSeeD](https://arxiv.org/pdf/2303.08131.pdf) that achieves the best results on open-set object segmentation tasks. Code and checkpoints are available [here](https://github.com/IDEA-Research/OpenSeeD).
 
 [2023/2] Mask DINO has been accepted to CVPR 2023!
 
