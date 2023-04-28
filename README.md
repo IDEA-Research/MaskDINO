@@ -15,6 +15,8 @@ Framework for Object Detection and Segmentation](https://arxiv.org/abs/2206.0277
 <details close>
 <summary> <font size=8><strong>News</strong></font> </summary>
 
+[2023/4]: We release a strong open-set object detection and segmentation model [OpenSeeD](https://arxiv.org/pdf/2303.08131.pdf) that achieves the best results on open-set object segmentation tasks. Code and checkpoints are available [here](https://github.com/IDEA-Research/OpenSeeD).
+
 [2023/2] Mask DINO has been accepted to CVPR 2023!
 
 [2022/9] We release a toolbox [**detrex**](https://github.com/IDEA-Research/detrex) that provides state-of-the-art Transformer-based detection algorithms. It includes DINO **with better performance** and Mask DINO will also be released with detrex implementation. Welcome to use it! </br>
