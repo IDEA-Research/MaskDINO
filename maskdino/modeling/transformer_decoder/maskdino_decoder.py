@@ -369,6 +369,7 @@ class MaskDINODecoder(nn.Module):
         :param targets: used for denoising training
         """
         assert len(x) == self.num_feature_levels
+        device = x[0].device
         size_list = []
         # disable mask, it does not affect performance
         enable_mask = 0
@@ -426,13 +427,13 @@ class MaskDINODecoder(nn.Module):
                 flaten_mask = outputs_mask.detach().flatten(0, 1)
                 h, w = outputs_mask.shape[-2:]
                 if self.initialize_box_type == 'bitmask':  # slower, but more accurate
-                    refpoint_embed = BitMasks(flaten_mask > 0).get_bounding_boxes().tensor.cuda()
+                    refpoint_embed = BitMasks(flaten_mask > 0).get_bounding_boxes().tensor.to(device)
                 elif self.initialize_box_type == 'mask2box':  # faster conversion
-                    refpoint_embed = box_ops.masks_to_boxes(flaten_mask > 0).cuda()
+                    refpoint_embed = box_ops.masks_to_boxes(flaten_mask > 0).to(device)
                 else:
                     assert NotImplementedError
                 refpoint_embed = box_ops.box_xyxy_to_cxcywh(refpoint_embed) / torch.as_tensor([w, h, w, h],
-                                                                                              dtype=torch.float).cuda()
+                                                                                              dtype=torch.float).to(device)
                 refpoint_embed = refpoint_embed.reshape(outputs_mask.shape[0], outputs_mask.shape[1], 4)
                 refpoint_embed = inverse_sigmoid(refpoint_embed)
         elif not self.two_stage:
