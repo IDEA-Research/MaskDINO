@@ -111,7 +111,7 @@ class MaskDINO(nn.Module):
         if not self.semantic_on:
             assert self.sem_seg_postprocess_before_inference
 
-        print('criterion.weight_dict ', self.criterion.weight_dict)
+        # print('criterion.weight_dict ', self.criterion.weight_dict)
 
     @classmethod
     def from_config(cls, cfg):
@@ -459,7 +459,7 @@ class MaskDINO(nn.Module):
         labels = torch.arange(self.sem_seg_head.num_classes, device=self.device).unsqueeze(0).repeat(self.num_queries, 1).flatten(0, 1)
         scores_per_image, topk_indices = scores.flatten(0, 1).topk(self.test_topk_per_image, sorted=False)  # select 100
         labels_per_image = labels[topk_indices]
-        topk_indices = topk_indices // self.sem_seg_head.num_classes
+        topk_indices = torch.div(topk_indices, self.sem_seg_head.num_classes,rounding_mode='floor')
         mask_pred = mask_pred[topk_indices]
         # if this is panoptic segmentation, we only keep the "thing" classes
         if self.panoptic_on:
