@@ -27,6 +27,7 @@ import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog, build_detection_train_loader
+from detectron2.data.datasets import register_coco_instances
 
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
@@ -329,6 +330,13 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
+    # print('bug: cfg', (cfg.__dict__.keys()))
+    register_coco_instances('luggage_parts1508_train', {},'/MaskDINO/mnt_datasets/coco/luggage_parts/annotations/train_1508.json', '/MaskDINO/mnt_datasets/coco/luggage_parts/images')
+    cfg.DATASETS.TRAIN = ('luggage_parts1508_train',)
+    register_coco_instances('luggage_parts1508_valid', {},'/MaskDINO/mnt_datasets/coco/luggage_parts/annotations/valid_1508.json', '/MaskDINO/mnt_datasets/coco/luggage_parts/images')
+    cfg.DATASETS.TEST = ('luggage_parts1508_valid',)
+    # cfg.OUTPUT_DIR = 'IDOL_pretrain_oncoco_carpart20221012_r50_twocrop'
+
     # for poly lr schedule
     add_deeplab_config(cfg)
     add_maskdino_config(cfg)
