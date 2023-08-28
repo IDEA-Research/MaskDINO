@@ -64,6 +64,12 @@ def build_transform_gen(cfg, is_train):
             min_scale=min_scale, max_scale=max_scale, target_height=image_size, target_width=image_size
         ),
         T.FixedSizeCrop(crop_size=(image_size, image_size)),
+        # T.RandomCrop_CategoryAreaConstraint(crop_type="relative_range", crop_size=[0.6,0.6]), #ignore rule to body
+        # T.RandomCrop_CategoryAreaConstraint(crop_type="relative_range", crop_size=[0.6,0.6], single_category_max_area= 0.4, ignored_category= 2), #ignore rule to body
+        # # T.RandomRotation(angle=[0,90], expand=True, center=[[0.45, 0.45],[0.55, 0.55]], sample_style="range"),
+        # T.RandomContrast(intensity_min=0.7, intensity_max=1.5),
+        # T.RandomBrightness(intensity_min=0.7, intensity_max=1.5),
+        # T.RandomSaturation(intensity_min=0.7, intensity_max=1.5),
     ])
 
     return augmentation
