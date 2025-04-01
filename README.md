@@ -298,7 +298,7 @@ You can easily replace each of these three components with your own implementati
 
 
 ## LICNESE
-Mask DINO is released under the Apache 2.0 license. Please see the [LICENSE](LICNESE) file for more information.
+Mask DINO is released under the Apache 2.0 license. Please see the [LICENSE](LICENSE) file for more information.
 
 Copyright (c) IDEA. All rights reserved.
 
