@@ -297,7 +297,7 @@ You can easily replace each of these three components with your own implementati
 * **transformer decoder**: it mainly follows DINO decoder to do detection and segmentation tasks. It is defined in `maskdino/modeling/transformer_decoder`.
 
 
-## LICNESE
+## LICENSE
 Mask DINO is released under the Apache 2.0 license. Please see the [LICENSE](LICNESE) file for more information.
 
 Copyright (c) IDEA. All rights reserved.
