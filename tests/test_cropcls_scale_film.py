@@ -1,4 +1,4 @@
-"""Step 12: scale awareness via FiLM.
+"""Step 12 of spec_cropcls.md: scale awareness via FiLM.
 
 As with the channel arms, every way this can go wrong is silent: aux taken from the
 letterboxed or dilated mask, a crop path that passes a different aux than training, or a FiLM

@@ -448,7 +448,7 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       folder-vs-live bit identity holds with the channel on; a `crops/` folder lacking the
       occluder raster raises rather than yielding zeros.
 
-- [ ] **Step 12 - scale awareness via FiLM** (`requirements_scale.md`). Give the classifier
+- [x] **Step 12 - scale awareness via FiLM** (`requirements_scale.md`). Give the classifier
       back the instance's real size, which the letterbox throws away, by modulating the pooled
       trunk features with a small network fed per-instance geometry.
 
@@ -532,6 +532,29 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       **Out of scope for Step 12:** detector score or other reliability inputs to `film` (not
       available in the static folder without re-extraction); additive-logit fusion; a
       scale-preserving crop.
+
+      **Outcome, 2026-11-10: no gain. By the pre-registered rule FiLM loses; with the measured
+      variance it is a tie.** The verdict word is left to the user. Runs in
+      `/data/janick.bilang/runs/film_step12`, compared with `compare.py` there; results in
+      `cropcls-results.md` section 11. Piles `classaware_f1`, seeds 0/1: control 52.78 / 58.66
+      (mean 55.72), FiLM 48.40 / 56.20 (mean 52.30), so -3.4, past the rule's 1.6. But the 0.82
+      seed variance behind that threshold was wrong for this config: the control seeds differ by
+      5.9. Seeds 2 and 3 were therefore added for both arms. Over four seeds: control 54.60
+      (sd 2.8), FiLM 52.68 (sd 3.3), a gap of -1.9, inside one sd. Paired by seed, FiLM is lower
+      at all four (-4.4, -2.5, -0.1, -0.8; sign test p ~0.125). Mechanism: a test-time shift of
+      the long-side feature by +-0.1 log2 (~1.3 length steps) changes 0 of 1127 single-set
+      argmaxes for `film_s1` and 1 for `filmwarm_s0`. These are the only two runs probed, and
+      only on the single set. The `film` output layer ends near zero (abs max 0.013-0.034). Train
+      loss reaches 0.002-0.005 on appearance alone, so length gets little gradient; that cause is
+      inferred, not measured. The post-hoc length product adds +6.6 points of exact top-1 on
+      piles (8-run mean, every run positive, min +4.6). **Added beyond the Arms item:** one
+      diagnostic warm-start arm, n=1 (`filmwarm_s0`: FiLM from
+      `20261109083120_setc_cp_cxt_c448`, 2000 it). It needs the `strict=False` film.*-only load in
+      `train_cropcls.py`. **Added beyond Resolution assumption:** `validate()` rejects
+      `scale_film` with `augment_frames`, because the frame augmentation would change pixel size.
+      **Features as built:** each minAreaRect side has +1 px added (pixel extent, not centres),
+      and fill is clipped to 1. Verify: `tests/test_cropcls_scale_film.py` and
+      `tests/test_cropcls_crop_folder.py` pass (65 tests; full suite 412).
 
 **Out of scope (explicit):** phase 2 / set B, COCO AP as a headline metric (argmax cannot hedge
 the way `instance_inference`'s `topk(100)` does), any modification to `maskdino/` or `train_net.py`. The owner made a change to register_hdf5_instance.py, in order to register the dataset correctly, this change is approved. (That change has since been superseded by `maskdino/data/datasets/images_root.py`, which resolves the images root from `$SURGICAL_IMAGES_ROOT` or a single `~/training/images_*` match; same approval, same carve-out.)

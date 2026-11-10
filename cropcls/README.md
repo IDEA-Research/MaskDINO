@@ -36,6 +36,9 @@ unmerged, so registering an architecture would have blocked this work on that me
 | ...and the channel is still **learnable** | zero weights ignore channel 3 entirely, so the equivalence above passes just as well on a frozen or detached channel | `test_one_step_moves_the_mask_weights_off_zero` |
 | channel 3 **is** the co-rotated letterboxed mask, in {0,1} | same reason: equivalence at init is satisfied by a channel of zeros or of noise, so the content needs its own assertion | `test_mask_channel_is_the_letterboxed_mask_not_zeros` |
 | all three crop paths emit the **same** channel layout | live, static-folder and `--hungarian` disagreeing does not raise - it just reports a worse number | `test_folder_crop_equals_live_crop` (parametrized over `mask_channel`) |
+| under `scale_film`, the FiLM model **is** the plain model at init | the film output layer is zero, so the arm measures scale rather than a perturbed head | `test_film_model_equals_the_plain_model_at_init` |
+| `aux` is `scale_feats` of the **undilated full-frame** mask on all three paths | the letterbox discards size, and a dilated or letterboxed mask gives a wrong size that raises nothing | `test_live_batch_aux_is_scale_feats_of_each_frame_mask_once_per_rotation`, `test_export_path_feeds_the_model_scale_feats_of_the_frame_mask`, `test_static_folder_aux_equals_the_full_frame_mask` |
+| a FiLM model called without `aux` **raises** | a missed call site would otherwise score a worse number silently | `test_film_model_without_aux_raises` |
 
 ## Traps that cost real time
 
