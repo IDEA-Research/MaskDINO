@@ -15,6 +15,9 @@ background and shows only when `blackout=False`.
 
 from __future__ import annotations
 
+import math
+
+import cv2
 import torch
 import torch.nn.functional as F
 
@@ -26,8 +29,11 @@ __all__ = [
     "normalize_crop",
     "pad_box",
     "rotate_k90",
+    "scale_feats",
     "to_model_input",
 ]
+
+SCALE_FEAT_DIM = 4
 
 
 def pad_box(
@@ -268,6 +274,36 @@ def letterbox_crop(
         crop_others = torch.zeros((size, size), dtype=torch.bool, device=img.device)
         crop_others[top : top + new_h, left : left + new_w] = oth
     return crop, crop_mask, crop_others
+
+
+def scale_feats(mask: torch.Tensor) -> torch.Tensor:
+    """The instance's real size, which the letterbox discards (spec_cropcls.md Step 12).
+
+    From the undilated mask in FRAME pixels, never the letterboxed crop. Uses the minimum-area
+    rectangle, not the axis-aligned box: the box's long edge shrinks when the tool is rotated,
+    the rectangle's does not, and it is unchanged by the 90-degree rotation augmentation. A
+    mask split by an occluder still spans its full extent, so length is lost only when an end
+    is hidden. Returns (4,) float32: log2(long/256), log2(short/32), log2(sqrt(area)/64),
+    fill - scaled to roughly +-1 for the set-C instrument sizes at 1024 px.
+    """
+    ys, xs = torch.nonzero(mask.detach().cpu(), as_tuple=True)
+    area = float(ys.numel())
+    if area == 0:
+        raise ValueError("scale_feats of an empty mask")
+    pts = torch.stack([xs, ys], 1).numpy().astype("float32")
+    (_, _), (w, h), _ = cv2.minAreaRect(pts)
+    # minAreaRect spans pixel CENTRES, so an n-px side reads n-1; +1 gives the pixel extent
+    # and keeps fill = area / (long*short) at ~1 for a solid bar instead of above it
+    long_, short = max(w, h) + 1.0, min(w, h) + 1.0
+    return torch.tensor(
+        [
+            math.log2(long_ / 256.0),
+            math.log2(short / 32.0),
+            math.log2(math.sqrt(area) / 64.0),
+            min(area / (long_ * short), 1.0),
+        ],
+        dtype=torch.float32,
+    )
 
 
 def rotate_k90(x: torch.Tensor, degrees: int) -> torch.Tensor:

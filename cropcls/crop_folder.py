@@ -24,7 +24,7 @@ from PIL import Image
 
 from .augment import PhotometricJitter
 from .config import CropClsConfig
-from .crops import letterbox_crop, mask_tight_bbox, pad_box, to_model_input
+from .crops import letterbox_crop, mask_tight_bbox, pad_box, scale_feats, to_model_input
 
 __all__ = [
     "CropFolder",
@@ -318,10 +318,13 @@ class CropFolder(torch.utils.data.Dataset):
         if out is None:
             raise ValueError(f"{path} produced no crop; re-extract")
         deg = self.rotations[int(torch.randint(len(self.rotations), (), generator=self.g))]
+        # The stored alpha is the undilated predicted mask at native resolution and the patch
+        # holds all of it, so this equals scale_feats of the full-frame mask. Never the PNG's
+        # own size: that is the pad_frac-grown box (spec Step 12).
         return to_model_input(
             out, cfg.pixel_mean, cfg.pixel_std, deg, cfg.mask_channel,
             cfg.occluder_channel,
-        ), label
+        ), scale_feats(mask), label
 
 
 def build_loader(cfg: CropClsConfig, root: str | Path, is_train: bool = True, seed: int = 0):

@@ -70,8 +70,9 @@ def collect(model, pipe, device, max_frames=None):
         if len(batch) == 0:
             continue
         x = batch.crops.to(device, non_blocking=True)
+        aux = batch.aux.to(device, non_blocking=True)
         with torch.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
-            logits = model(x)
+            logits = model(x, aux)
         prob = F.softmax(logits.float(), dim=1).cpu()
         pred = prob.argmax(1)
         total += len(batch)

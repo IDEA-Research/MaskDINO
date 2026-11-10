@@ -39,7 +39,7 @@ with torch.no_grad():
         b = pipe.build_batch(list(range(s, min(s + cfg.ims_per_batch, a.frames))), rotations=[0])
         if len(b) == 0:
             continue
-        lg = model(b.crops.to(device)).float()
+        lg = model(b.crops.to(device), b.aux.to(device)).float()
         y = b.labels.to(device)
         ce.append(F.cross_entropy(lg, y, reduction="none").cpu())
         lab.append(b.labels); ok.append((lg.argmax(1) == y).cpu())

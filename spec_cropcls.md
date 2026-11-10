@@ -448,6 +448,91 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       folder-vs-live bit identity holds with the channel on; a `crops/` folder lacking the
       occluder raster raises rather than yielding zeros.
 
+- [ ] **Step 12 - scale awareness via FiLM** (`requirements_scale.md`). Give the classifier
+      back the instance's real size, which the letterbox throws away, by modulating the pooled
+      trunk features with a small network fed per-instance geometry.
+
+      **Why, measured** (set C, 2026-11-09/10, `/data/janick.bilang/runs/occ_analysis`). The
+      set-C classes inside a family differ only in length (nominal, +10 ... +50 mm), and
+      `letterbox_crop` scales every crop to the same long edge. The long side of the predicted
+      mask's minimum-area rectangle grows ~20 px per +10 mm with a 4-9 px spread inside a class;
+      length alone picks the right level 90-98% of the time on single tools. A post-hoc product
+      of the frozen classifier with a length likelihood raised exact top-1 0.539 -> 0.610 on
+      `val_set_c_mm-1.0x` and 0.826 -> 0.894 on `val_set_c_single_mm-1.0x`, with a learned
+      per-detection weight 0.64 / 0.92. This step tests whether learning it end to end does the
+      same or better. The camera is fixed (user, 2026-11-10), so pixel size is a stable cue on
+      these sets; `cropcls-scale-feature-notes.md` section 4's shortcut warning still applies
+      to any other camera setup.
+
+      **Design - FiLM on the pooled features** (`cropcls-scale-feature-notes.md` section 5,
+      FiLM variant). `f = trunk(x)` (pooled, `feature_dim`), `gamma, beta = film(aux)`,
+      `f = f * (1 + gamma) + beta`, then the unchanged head. `film` is `Linear(4,64)-GELU-
+      Linear(64,64)-GELU-Linear(64, 2*feature_dim)` with the **last layer zero-initialized**, so
+      at iteration 0 the model is numerically the `scale_film: false` model and the arm
+      measures the feature, not a perturbed head. Config flag `scale_film: bool = False`.
+
+      **Features** (`scale_feats(mask)` in `cropcls/crops.py`), from the instance's own
+      **undilated** mask in frame pixels, before any letterbox: long and short side of
+      `cv2.minAreaRect` over the mask pixels, `sqrt(area)`, and `fill = area / (long*short)`,
+      as `log2(long/256), log2(short/32), log2(sqrt(area)/64), fill`. Not the axis-aligned box
+      the design note proposed: its long edge shrinks with rotation, and measured on set C it
+      separates the length levels at 38-52% where the rectangle reaches 90-98%. The rectangle is
+      invariant to the 90-degree rotation augmentation, so `aux` does not change with `deg`.
+      Edge-cut instances get the same features (their length is short); the trunk sees the cut.
+
+      **Plumbing - aux is computed on every path, always.** Not only when `scale_film` is on:
+      that keeps the three crop paths from diverging by config, which is exactly the silent
+      failure `to_model_input` warns about. `CropBatch` gains `aux (B,4)`; the static
+      `CropFolder.__getitem__` returns `(x, aux, label)`; `cropcls/export.py` (the path that
+      produces `classaware_f1`) and `train_cropcls.py` (train loop and `evaluate`) pass
+      `model(x, aux)`. `CropClassifier.forward(x, aux=None)` **raises** when `scale_film` is on
+      and `aux` is None, so a missed call site fails loudly instead of scoring a worse number.
+      Tools that call the model (`confidence_metrics`, `class_report`, `loss_breakdown`,
+      `viz_misclassified`, `augment_probe`) pass `aux` too.
+
+      **Resolution assumption.** `aux` is in frame pixels, and the static folder stores patches
+      at native resolution while the val mapper feeds the detector native 1024x1024 frames, so
+      train and score agree. A resize in either mapper would shift every feature; not guarded
+      beyond this note.
+
+      **Static folder needs no re-extraction.** Alpha is the undilated predicted mask and the
+      stored patch contains all of it, so the rectangle of the patch mask equals the rectangle
+      of the full-frame mask. Do NOT read size off the PNG dimensions (design note section 6
+      point 6).
+
+      **Arms.** Base `configs/cropcls/setc_cp_cxt_c448.yaml`. Control: same file,
+      `scale_film=false`; FiLM arm: `scale_film=true`; each with its own `output_dir=`, seeds 0
+      and 1 (seed variance 0.82 points). The existing `runs/20261109083120_setc_cp_cxt_c448` is
+      NOT reused as control: it was trained before this code change.
+
+      **Rank by `classaware_f1`** from `HungarianInstanceEvaluator`, `score_mode=detector`, on
+      `val_set_c_mm-1.0x` (the config's own val). Also reported, not ranked:
+      `val_set_c_single_mm-1.0x` and `val_set_c_cpocc_mm-1.0x`, and exact / family / +-10 mm
+      top-1 on matched detections.
+
+      **Verify** - `tests/test_cropcls_scale_film.py` (new) and `tests/test_cropcls_crop_folder.py`:
+      `scale_feats` of a rasterized W x H rectangle gives long/short within 1 px of max/min(W,H)
+      and is identical for the mask and each `rot90` of it; the `scale_film` model's logits equal
+      the plain model's at init with the shared weights copied over, and one optimizer step moves
+      the FiLM output layer off zero; `forward(x)` without `aux` raises when `scale_film` is on;
+      the static folder's `aux` equals `scale_feats` of the full-frame mask the patch was cut
+      from, and the live path (`CropPipeline.build_batch`) and the scoring path
+      (`cropcls/export.py`) feed the model exactly `scale_feats` of the same undilated
+      full-frame mask - checked by capturing the `aux` each path passes to a stub model, so an
+      `aux` taken from the letterboxed or dilated mask fails; `CropBatch.aux` has one row per
+      crop.
+
+      **Decision rule, fixed before the runs.** FiLM wins if its mean `classaware_f1` over seeds
+      0 and 1 on `val_set_c_mm-1.0x` beats the control's mean by more than 1.6 points (2x seed
+      variance), and loses if it is more than 1.6 points worse; in between is a tie. To compare
+      against the post-hoc fusion, which has no `classaware_f1`, report exact top-1 on matched
+      detections from `pred_length_pass.py`-style output for both arms, against the post-hoc
+      0.610 (fixed product) and 0.641 (learned weight) on piles and 0.894 / 0.924 on single.
+
+      **Out of scope for Step 12:** detector score or other reliability inputs to `film` (not
+      available in the static folder without re-extraction); additive-logit fusion; a
+      scale-preserving crop.
+
 **Out of scope (explicit):** phase 2 / set B, COCO AP as a headline metric (argmax cannot hedge
 the way `instance_inference`'s `topk(100)` does), any modification to `maskdino/` or `train_net.py`. The owner made a change to register_hdf5_instance.py, in order to register the dataset correctly, this change is approved. (That change has since been superseded by `maskdino/data/datasets/images_root.py`, which resolves the images root from `$SURGICAL_IMAGES_ROOT` or a single `~/training/images_*` match; same approval, same carve-out.)
 

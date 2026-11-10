@@ -36,7 +36,7 @@ with torch.no_grad():
         b = pipe.build_batch(list(range(s, min(s + cfg.ims_per_batch, a.frames))), rotations=[0])
         if len(b) == 0:
             continue
-        lg = model(b.crops.to(device)).float()
+        lg = model(b.crops.to(device), b.aux.to(device)).float()
         ys.append(b.labels); ps.append(lg.argmax(1).cpu())
 y, p = torch.cat(ys), torch.cat(ps)
 names = pipe.class_names

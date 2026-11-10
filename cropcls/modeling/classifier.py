@@ -21,6 +21,7 @@ import torch
 import torch.nn as nn
 
 from ..config import CropClsConfig
+from ..crops import SCALE_FEAT_DIM
 
 __all__ = [
     "CropClassifier",
@@ -136,6 +137,7 @@ class CropClassifier(nn.Module):
         mask_channel: bool = False,
         occluder_channel: bool = False,
         stem_stride: int = 0,
+        scale_film: bool = False,
     ):
         super().__init__()
         # num_classes=0 + global_pool="avg" gives pooled features and no head, so the
@@ -169,6 +171,17 @@ class CropClassifier(nn.Module):
         nn.init.trunc_normal_(self.head.weight, std=0.01)
         nn.init.zeros_(self.head.bias)
 
+        self.film = None
+        if scale_film:
+            self.film = nn.Sequential(
+                nn.Linear(SCALE_FEAT_DIM, 64), nn.GELU(),
+                nn.Linear(64, 64), nn.GELU(),
+                nn.Linear(64, 2 * self.feature_dim),
+            )
+            # zero gamma and beta: the arm starts as exactly the plain model
+            nn.init.zeros_(self.film[-1].weight)
+            nn.init.zeros_(self.film[-1].bias)
+
         self.freeze_trunk = freeze_trunk
         if freeze_trunk:
             for p in self.trunk.parameters():
@@ -186,8 +199,15 @@ class CropClassifier(nn.Module):
             self.trunk.eval()
         return self
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.head(self.trunk(x))
+    def forward(self, x: torch.Tensor, aux: torch.Tensor | None = None) -> torch.Tensor:
+        f = self.trunk(x)
+        if self.film is not None:
+            if aux is None:
+                # a call site that forgot aux would otherwise score a worse number silently
+                raise ValueError("scale_film model called without aux (crops.scale_feats)")
+            gamma, beta = self.film(aux.to(f.dtype)).chunk(2, dim=1)
+            f = f * (1 + gamma) + beta
+        return self.head(f)
 
     def param_groups(self, base_lr: float, weight_decay: float):
         """Decay on weights, none on norms and biases."""
@@ -214,4 +234,5 @@ def build_classifier(cfg: CropClsConfig, num_classes: int) -> CropClassifier:
         mask_channel=cfg.mask_channel,
         occluder_channel=cfg.occluder_channel,
         stem_stride=cfg.stem_stride,
+        scale_film=cfg.scale_film,
     )

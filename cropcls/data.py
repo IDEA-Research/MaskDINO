@@ -32,7 +32,13 @@ from maskdino.data.datasets.register_hdf5_instance import (
 from .assign import assign_gt_classes
 from .augment import PhotometricJitter
 from .config import CropClsConfig
-from .crops import letterbox_crop, mask_tight_bbox, to_model_input
+from .crops import (
+    SCALE_FEAT_DIM,
+    letterbox_crop,
+    mask_tight_bbox,
+    scale_feats,
+    to_model_input,
+)
 from .detector import FrozenSingleClassDetector
 
 __all__ = [
@@ -193,6 +199,9 @@ class CropRecord:
 class CropBatch:
     crops: torch.Tensor                       # (B, C, S, S) normalized, C = cfg.in_chans
     labels: torch.Tensor                      # (B,) long
+    # (B, SCALE_FEAT_DIM) crops.scale_feats of each crop's frame mask. Always filled, whatever
+    # cfg.scale_film says, so the crop paths cannot diverge by config (spec Step 12).
+    aux: torch.Tensor
     records: list[CropRecord] = field(default_factory=list)
     verdict_counts: dict[str, int] = field(default_factory=dict)
 
@@ -264,6 +273,7 @@ class CropPipeline:
 
         crops: list[torch.Tensor] = []
         labels: list[int] = []
+        auxs: list[torch.Tensor] = []
         records: list[CropRecord] = []
         counts: dict[str, int] = defaultdict(int)
 
@@ -316,7 +326,9 @@ class CropPipeline:
                     if out is None:          # empty after the bbox round-trip
                         continue
                     label = int(a.labels[k])
+                    sf = scale_feats(pred_masks[k])       # rotation-invariant: once per mask
                     for deg in rots:
+                        auxs.append(sf)
                         crops.append(
                             to_model_input(
                                 out, self.cfg.pixel_mean, self.cfg.pixel_std,
@@ -343,12 +355,16 @@ class CropPipeline:
             if crops:
                 batch = torch.stack(crops)
                 lab = torch.tensor(labels, dtype=torch.long)
+                aux = torch.stack(auxs)
             else:
                 s = self.cfg.crop_size
                 batch = torch.zeros((0, self.cfg.in_chans, s, s))
                 lab = torch.zeros((0,), dtype=torch.long)
+                aux = torch.zeros((0, SCALE_FEAT_DIM))
 
-        return CropBatch(crops=batch, labels=lab, records=records, verdict_counts=dict(counts))
+        return CropBatch(
+            crops=batch, labels=lab, aux=aux, records=records, verdict_counts=dict(counts)
+        )
 
     def iter_batches(self, seed: int = 0, shuffle: bool | None = None):
         """Infinite (train) or single-pass (val) stream of CropBatch."""

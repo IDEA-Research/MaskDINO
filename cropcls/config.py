@@ -102,6 +102,10 @@ class CropClsConfig:
     # masks, never GT: GT occluders would be a train-only oracle. Always last, so turning it
     # on does not renumber the channel a mask_channel checkpoint was trained with.
     occluder_channel: bool = False
+    # FiLM the pooled trunk features with the instance's real size (crops.scale_feats), which
+    # the letterbox throws away - the set-C classes differ only in length (spec Step 12). The
+    # FiLM output layer starts at zero, so at iteration 0 the model equals scale_film=false.
+    scale_film: bool = False
     # Lossless pixel permutations on a square canvas; applied after cropping so one
     # detector forward yields 4x the classifier samples (spec section 6, step 5). Live path
     # only - the static cache (spec_static_crops.md) samples one rotation per draw, because
@@ -201,6 +205,13 @@ class CropClsConfig:
                 "channel 3 is an affine rescaling of channel 0 (mask*255 normalized to "
                 "~+2.25/-2.12, against 1.0/0.0) and carries no information the trunk "
                 "cannot already read. Pick one."
+            )
+        if self.scale_film and self.augment_frames:
+            raise ValueError(
+                "scale_film with augment_frames: frame-level augmentation rescales the frame "
+                "before the detector, so training aux (crops.scale_feats, in frame pixels) "
+                "would be jittered while val and export see native 1024 px. FiLM would learn "
+                "that size is noise."
             )
         if self.occluder_channel and not self.mask_channel:
             raise ValueError(

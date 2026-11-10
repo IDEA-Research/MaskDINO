@@ -37,7 +37,7 @@ import torch.nn.functional as F
 import maskdino  # noqa: F401  - registers the hdf5 datasets
 from cropcls.assign import assign_gt_classes
 from cropcls.config import load_config
-from cropcls.crops import letterbox_crop, mask_tight_bbox, to_model_input
+from cropcls.crops import letterbox_crop, mask_tight_bbox, scale_feats, to_model_input
 from cropcls.data import CropPipeline, apply_truncated_filter, apply_val_stride
 from cropcls.detector import FrozenSingleClassDetector
 from cropcls.modeling import build_classifier
@@ -96,7 +96,7 @@ def collect(model, pipe, device, max_frames=None, step=None):
             )
 
             image = m["image"].float()
-            crops, keep, geom = [], [], []
+            crops, auxs, keep, geom = [], [], [], []
             for k in range(len(det)):
                 tight = mask_tight_bbox(pred_masks[k])
                 if tight is None:
@@ -119,13 +119,15 @@ def collect(model, pipe, device, max_frames=None, step=None):
                 # `keep` - a dropped crop would otherwise shift every later row's scale columns
                 # onto the wrong detection.
                 geom.append((int(y1 - y0), int(x1 - x0), int(pred_masks[k].sum())))
+                auxs.append(scale_feats(pred_masks[k]))
                 keep.append(k)
             if not crops:
                 continue
 
             x = torch.stack(crops).to(device)
+            aux = torch.stack(auxs).to(device)
             with torch.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
-                logits = model(x)
+                logits = model(x, aux)
             logits = logits.float().cpu()
             prob = F.softmax(logits, dim=1)
             top2 = prob.topk(min(2, prob.shape[1]), dim=1)

@@ -109,8 +109,9 @@ def evaluate(model, pipeline: CropPipeline, device, max_frames=None) -> dict:
             continue
         x = batch.crops.to(device, non_blocking=True)
         y = batch.labels.to(device, non_blocking=True)
+        aux = batch.aux.to(device, non_blocking=True)
         with torch.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
-            logits = model(x)
+            logits = model(x, aux)
             loss = F.cross_entropy(logits.float(), y)
         pred = logits.float().argmax(1)
         correct += int((pred == y).sum())
@@ -264,7 +265,15 @@ def main():
                 "run at the wrong feature-map resolution. Set stem_stride to match, or point "
                 "weights= at a checkpoint from a run with this stride."
             )
-        model.load_state_dict(state["model"])
+        if cfg.scale_film and not any(k.startswith("film.") for k in state["model"]):
+            # Warm start from a plain checkpoint: FiLM starts at zero, so the loaded model is
+            # exactly that checkpoint at iteration 0. Only film.* may be missing.
+            missing, unexpected = model.load_state_dict(state["model"], strict=False)
+            if unexpected or any(not k.startswith("film.") for k in missing):
+                raise RuntimeError(f"checkpoint mismatch: missing {missing}, unexpected {unexpected}")
+            logger.info("FiLM warm start: film.* initialized fresh (zero output)")
+        else:
+            model.load_state_dict(state["model"])
         logger.info("loaded weights from %s (iter %s, stem_stride %s)",
                     cfg.weights, state.get("iteration"), ckpt_stride)
 
@@ -337,8 +346,8 @@ def main():
 
         def _crop_stream():
             while True:                      # a fresh iter() reshuffles
-                for x, y in loader:
-                    yield CropBatch(crops=x, labels=y)
+                for x, aux, y in loader:
+                    yield CropBatch(crops=x, labels=y, aux=aux)
 
         stream = _crop_stream()
     else:
@@ -354,9 +363,10 @@ def main():
             continue
         x = batch.crops.to(device, non_blocking=True)
         y = batch.labels.to(device, non_blocking=True)
+        aux = batch.aux.to(device, non_blocking=True)
         with timer("classifier", sync=True):
             with torch.autocast("cuda", dtype=torch.float16, enabled=scaler.is_enabled()):
-                loss = F.cross_entropy(model(x).float(), y)
+                loss = F.cross_entropy(model(x, aux).float(), y)
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.step(opt)
