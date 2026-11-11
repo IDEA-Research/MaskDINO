@@ -592,45 +592,47 @@ section 8, and the `stem_stride` arms of section 9. That is the set the section 
 drawn from, and the current leader within it is convnext_tiny c448 at **0.9487** (n=2).
 
 
-## 11. Scale awareness via FiLM (spec Step 12), 2026-11-10
+## 11. Scale awareness via FiLM (spec Step 12), 2026-11-11
 
 Set-C copy-paste classifier (`configs/cropcls/setc_cp_cxt_c448.yaml`), control vs `scale_film=true`,
-four seeds each. Runs and scripts: `/data/janick.bilang/runs/film_step12`. Rank metric:
-`classaware_f1`, Hungarian, `score_mode=detector`. Host dbe-cia-sl19-01, one GPU per run.
+seeds 0-2. Runs and scripts: `/data/janick.bilang/runs/film_step12`. Rank metric: `classaware_f1`,
+Hungarian, `score_mode=detector`. Host dbe-cia-sl19-01, one GPU per run.
+
+**No significant change.** classaware_f1, mean +- sd over seeds 0-2, paired t-test FiLM vs control:
+
+| set | control | FiLM | diff | p |
+|---|---|---|---|---|
+| piles (ranked) | 55.24 +- 3.05 | 52.93 +- 4.05 | -2.31 | 0.20 |
+| single | 84.18 +- 2.87 | 82.99 +- 4.58 | -1.18 | 0.62 |
+| cp-occ | 76.65 +- 1.99 | 75.43 +- 3.70 | -1.22 | 0.47 |
+
+Per seed (s0 / s1 / s2):
 
 | arm | piles f1 | single f1 | cp-occ f1 | piles exact | piles exact + post-hoc length |
 |---|---|---|---|---|---|
-| control s0/s1/s2/s3 | 52.78 / 58.66 / 54.27 / 52.70 | 82.61 / 87.49 / 82.43 / 84.83 | 75.02 / 78.88 / 76.07 / 76.92 | 0.539 / 0.599 / 0.554 / 0.538 | 0.610 / 0.645 / 0.627 / 0.610 |
-| control mean | **54.60** (sd 2.8) | 84.34 | 76.72 | 0.558 | 0.623 |
-| FiLM s0/s1/s2/s3 | 48.40 / 56.20 / 54.19 / 51.91 | 77.82 / 86.51 / 84.65 / 82.43 | 71.21 / 78.10 / 76.99 / 75.66 | 0.494 / 0.574 / 0.553 / 0.530 | 0.575 / 0.637 / 0.604 / 0.601 |
-| FiLM mean | **52.68** (sd 3.3) | 82.85 | 75.49 | 0.538 | 0.604 |
-| FiLM warm start (from 20261109083120, 2000 it), s0, diagnostic n=1 | 57.43 | 87.40 | 79.72 | 0.586 | 0.643 |
+| control | 52.78 / 58.66 / 54.27 | 82.61 / 87.49 / 82.43 | 75.02 / 78.88 / 76.07 | 0.539 / 0.599 / 0.554 | 0.610 / 0.645 / 0.627 |
+| FiLM | 48.40 / 56.20 / 54.19 | 77.82 / 86.51 / 84.65 | 71.21 / 78.10 / 76.99 | 0.494 / 0.574 / 0.553 | 0.575 / 0.637 / 0.604 |
+| FiLM warm start (from 20261109083120, 2000 it), diagnostic n=1 | 57.43 | 87.40 | 79.72 | 0.586 | 0.643 |
 
-Exact / family / +-10 mm top-1 on matched detections, four-seed means:
+Exact / family / +-10 mm top-1 on matched detections, mean over seeds 0-2:
 
 | arm | piles | single | cp-occ |
 |---|---|---|---|
-| control | 0.558 / 0.744 / 0.711 | 0.843 / 0.968 / 0.956 | 0.785 / 0.961 / 0.938 |
-| FiLM | 0.538 / 0.733 / 0.699 | 0.829 / 0.966 / 0.949 | 0.773 / 0.963 / 0.936 |
+| control | 0.564 / 0.750 / 0.716 | 0.842 / 0.970 / 0.957 | 0.784 / 0.962 / 0.938 |
+| FiLM | 0.540 / 0.732 / 0.699 | 0.830 / 0.966 / 0.948 | 0.772 / 0.962 / 0.934 |
 
-Reference points from before this step (frozen `20261109083120` classifier, `occ_analysis`):
-post-hoc fixed product 0.610 piles / 0.894 single; learned per-detection weight 0.641 / 0.924.
-No FiLM arm reaches either. The same fixed product applied to these runs gives 0.604-0.623 on
-piles (means above).
+A seed 3 of both arms was also run (control 52.70, FiLM 51.91 piles f1). It does not change the
+conclusion: the 4-seed gap is -1.9.
 
-- **No gain.** By the pre-registered rule (seeds 0/1, +-1.6) FiLM loses by 3.4. That rule assumed
-  0.82 seed variance; the measured control sd is 2.8. Over four seeds the gap is -1.9, inside one
-  sd, which makes it a tie under any threshold based on the measured variance. Paired by seed,
-  FiLM is lower at all four seeds (-4.4 / -2.5 / -0.1 / -0.8), which is not significant (sign test
-  p ~0.125).
-- **The trained FiLM barely uses the scale input.** A test-time shift of the length feature by
-  +-0.1 log2 (about 1.3 length steps) changed 0 of 1127 single-set argmaxes for `film_s1` and 1
-  for `filmwarm_s0` (`probe_report.py`). Only these two runs were probed, and only on the single
-  set. The film output layer ends near zero (abs max 0.013-0.034). Final train loss is
-  0.002-0.005, so appearance alone fits the training crops and length gets little gradient. That
-  causal link is inferred, not measured.
-- **Seed variance on this config is large.** Control piles f1 sd is 2.8 points (range 52.7-58.7),
-  not the 0.82 measured on earlier configs. A 2-point claim on set C needs at least four seeds.
-- **Post-hoc length fusion is the mechanism that works.** It adds +6.6 points of exact top-1 on
-  piles (mean of 8 runs, every run positive, min +4.6). Length statistics come from each run's
-  single-set pass, so the single-set post-hoc numbers are in-sample; piles and cp-occ are not.
+- **Seed variance on set C is about 3 points of piles f1,** not the 0.82 measured on earlier
+  configs. The 1.6-point threshold pre-registered in the spec rested on that 0.82 and is not used.
+- **The network does not pick up the scale input.** A test-time shift of the length feature by
+  about one length step changed 0 of 1127 single-set predictions (`film_s1`; 1 for the warm-start
+  run; `probe_report.py`, single set only). The film output layer ends near zero (abs max
+  0.013-0.034). Train loss reaches 0.002-0.005 on appearance alone, so length plausibly gets little
+  gradient; that link is inferred, not measured.
+- **Length still carries information the classifier lacks.** The post-hoc length product adds about
+  +6 points of exact top-1 on piles (control 0.564 -> 0.627, FiLM 0.540 -> 0.605), positive on
+  every run. Length statistics come from each run's single-set pass, so single-set post-hoc numbers
+  are in-sample; piles and cp-occ are not. Reference, frozen `20261109083120` classifier: fixed
+  product 0.610 piles / 0.894 single, learned per-detection weight 0.641 / 0.924.
