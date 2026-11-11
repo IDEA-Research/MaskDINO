@@ -106,6 +106,13 @@ class CropClsConfig:
     # the letterbox throws away - the set-C classes differ only in length (spec Step 12). The
     # FiLM output layer starts at zero, so at iteration 0 the model equals scale_film=false.
     scale_film: bool = False
+    # Step 13: add k * (g_L + g_W) to the logits - per-class Gaussian likelihoods of the mask's
+    # length and width, peak 1, floored, zero when the mask touches the frame. Fixed, from
+    # tools/length_stats.py run on the training crops; k = 1 is the post-hoc product.
+    length_prior: bool = False
+    length_stats: str = ""
+    length_prior_k: float = 1.0
+    length_prior_floor: float = 0.02
     # Lossless pixel permutations on a square canvas; applied after cropping so one
     # detector forward yields 4x the classifier samples (spec section 6, step 5). Live path
     # only - the static cache (spec_static_crops.md) samples one rotation per draw, because
@@ -213,6 +220,23 @@ class CropClsConfig:
                 "would be jittered while val and export see native 1024 px. FiLM would learn "
                 "that size is noise."
             )
+        if self.length_prior:
+            if not (0.0 < self.length_prior_floor < 1.0) or self.length_prior_k < 0:
+                raise ValueError(
+                    f"length_prior needs 0 < floor < 1 and k >= 0, got floor="
+                    f"{self.length_prior_floor}, k={self.length_prior_k}: a zero floor gives "
+                    "-inf logits and an infinite loss on any crop whose length is off"
+                )
+            if self.augment_frames:
+                raise ValueError(
+                    "length_prior with augment_frames: frame-level augmentation rescales the "
+                    "frame, so training lengths would no longer match the fixed prior's px stats."
+                )
+            if not self.length_stats or not Path(self.length_stats).is_file():
+                raise ValueError(
+                    f"length_prior needs length_stats= a file from tools/length_stats.py, got "
+                    f"{self.length_stats!r}"
+                )
         if self.occluder_channel and not self.mask_channel:
             raise ValueError(
                 "occluder_channel without mask_channel: in_chans would be 4 with the OCCLUDER "

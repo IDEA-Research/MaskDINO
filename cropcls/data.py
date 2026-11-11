@@ -33,7 +33,7 @@ from .assign import assign_gt_classes
 from .augment import PhotometricJitter
 from .config import CropClsConfig
 from .crops import (
-    SCALE_FEAT_DIM,
+    AUX_DIM,
     letterbox_crop,
     mask_tight_bbox,
     scale_feats,
@@ -199,7 +199,7 @@ class CropRecord:
 class CropBatch:
     crops: torch.Tensor                       # (B, C, S, S) normalized, C = cfg.in_chans
     labels: torch.Tensor                      # (B,) long
-    # (B, SCALE_FEAT_DIM) crops.scale_feats of each crop's frame mask. Always filled, whatever
+    # (B, AUX_DIM) crops.scale_feats of each crop's frame mask. Always filled, whatever
     # cfg.scale_film says, so the crop paths cannot diverge by config (spec Step 12).
     aux: torch.Tensor
     records: list[CropRecord] = field(default_factory=list)
@@ -360,7 +360,7 @@ class CropPipeline:
                 s = self.cfg.crop_size
                 batch = torch.zeros((0, self.cfg.in_chans, s, s))
                 lab = torch.zeros((0,), dtype=torch.long)
-                aux = torch.zeros((0, SCALE_FEAT_DIM))
+                aux = torch.zeros((0, AUX_DIM))
 
         return CropBatch(
             crops=batch, labels=lab, aux=aux, records=records, verdict_counts=dict(counts)

@@ -22,12 +22,14 @@ import torch.nn as nn
 
 from ..config import CropClsConfig
 from ..crops import SCALE_FEAT_DIM
+from ..length_prior import load_stats, prior_term
 
 __all__ = [
     "CropClassifier",
     "add_mask_input_channel",
     "build_classifier",
     "first_conv",
+    "load_weights",
     "set_stem_stride",
 ]
 
@@ -138,6 +140,9 @@ class CropClassifier(nn.Module):
         occluder_channel: bool = False,
         stem_stride: int = 0,
         scale_film: bool = False,
+        length_prior: tuple[torch.Tensor, torch.Tensor] | None = None,
+        length_prior_k: float = 1.0,
+        length_prior_floor: float = 0.02,
     ):
         super().__init__()
         # num_classes=0 + global_pool="avg" gives pooled features and no head, so the
@@ -182,6 +187,19 @@ class CropClassifier(nn.Module):
             nn.init.zeros_(self.film[-1].weight)
             nn.init.zeros_(self.film[-1].bias)
 
+        # Step 13: fixed, not learned - buffers, so they are saved with the checkpoint and the
+        # optimizer never sees them
+        self.has_length_prior = length_prior is not None
+        self.use_length_prior = self.has_length_prior
+        if self.has_length_prior:
+            mu, sd = length_prior
+            if mu.shape != (2, num_classes) or sd.shape != (2, num_classes):
+                raise ValueError(f"length prior must be (2, {num_classes}), got {tuple(mu.shape)}")
+            self.register_buffer("len_mu", mu.float().clone())
+            self.register_buffer("len_sd", sd.float().clone())
+            self.length_prior_k = float(length_prior_k)
+            self.length_prior_floor = float(length_prior_floor)
+
         self.freeze_trunk = freeze_trunk
         if freeze_trunk:
             for p in self.trunk.parameters():
@@ -205,9 +223,15 @@ class CropClassifier(nn.Module):
             if aux is None:
                 # a call site that forgot aux would otherwise score a worse number silently
                 raise ValueError("scale_film model called without aux (crops.scale_feats)")
-            gamma, beta = self.film(aux.to(f.dtype)).chunk(2, dim=1)
+            gamma, beta = self.film(aux[:, :SCALE_FEAT_DIM].to(f.dtype)).chunk(2, dim=1)
             f = f * (1 + gamma) + beta
-        return self.head(f)
+        logits = self.head(f)
+        if self.has_length_prior and self.use_length_prior:
+            if aux is None:
+                raise ValueError("length_prior model called without aux (crops.scale_feats)")
+            logits = logits.float() + self.length_prior_k * prior_term(
+                aux, self.len_mu, self.len_sd, self.length_prior_floor)
+        return logits
 
     def param_groups(self, base_lr: float, weight_decay: float):
         """Decay on weights, none on norms and biases."""
@@ -225,8 +249,18 @@ class CropClassifier(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
-def build_classifier(cfg: CropClsConfig, num_classes: int) -> CropClassifier:
+def build_classifier(
+    cfg: CropClsConfig, num_classes: int, class_names: list[str] | None = None
+) -> CropClassifier:
+    prior = None
+    if cfg.length_prior:
+        if class_names is None or len(class_names) != num_classes:
+            raise ValueError("length_prior needs the class names to check the stats file's order")
+        prior = load_stats(cfg.length_stats, class_names)
     return CropClassifier(
+        length_prior=prior,
+        length_prior_k=cfg.length_prior_k,
+        length_prior_floor=cfg.length_prior_floor,
         trunk=cfg.trunk,
         num_classes=num_classes,
         pretrained=cfg.trunk_pretrained,
@@ -236,3 +270,50 @@ def build_classifier(cfg: CropClsConfig, num_classes: int) -> CropClassifier:
         stem_stride=cfg.stem_stride,
         scale_film=cfg.scale_film,
     )
+
+
+def load_weights(model: CropClassifier, state: dict, cfg: CropClsConfig, source: str = "") -> dict:
+    """Load a checkpoint into `model`, tolerating only the parts this config adds fresh.
+
+    Missing `film.*` is a FiLM warm start (FiLM starts at zero, so the loaded model is the
+    checkpoint). Missing `len_*` is a plain checkpoint scored with the Step 13 prior (arm A):
+    the buffers keep the stats file's values. Present `len_*` must equal the stats file, or the
+    run would silently score with a prior other than the one its config names.
+    """
+    # The stem stride is a Conv2d ATTRIBUTE, not a parameter: a stride-2 and a stride-4 trunk
+    # have identical state_dict keys and identical tensor shapes, so load_state_dict accepts
+    # the wrong one without error and then runs a 7x7 feature map where the weights expect
+    # 14x14. Compare the EFFECTIVE stride, since stem_stride 0 and 4 are the same
+    # convnext_tiny. A checkpoint with no recorded stride predates the field, which means the
+    # trunk's native stride - what every earlier run trained at.
+    ckpt_stride = state.get("stem_stride", model.native_stem_stride)
+    if ckpt_stride != model.stem_stride:
+        raise ValueError(
+            f"{source} was trained with a first-conv stride of {ckpt_stride} but this "
+            f"model is built with {model.stem_stride}. The weights would load silently and "
+            "run at the wrong feature-map resolution. Set stem_stride to match, or point "
+            "weights= at a checkpoint from a run with this stride."
+        )
+    sd = state["model"]
+    fresh = []
+    if model.film is not None and not any(k.startswith("film.") for k in sd):
+        fresh.append("film.")
+    if model.has_length_prior:
+        if "len_mu" in sd or "len_sd" in sd:
+            # the checkpoint is loaded to CPU; the model may already be on the GPU
+            same = all(
+                k in sd and sd[k].shape == getattr(model, k).shape
+                and torch.allclose(sd[k].float().cpu(), getattr(model, k).float().cpu())
+                for k in ("len_mu", "len_sd")
+            )
+            if not same:
+                raise ValueError(
+                    f"{source} carries a length prior that differs from {cfg.length_stats}. "
+                    "Point length_stats at the file the run was trained with."
+                )
+        else:
+            fresh.append("len_")
+    missing, unexpected = model.load_state_dict(sd, strict=not fresh)
+    if unexpected or any(not k.startswith(tuple(fresh)) for k in missing):
+        raise RuntimeError(f"checkpoint mismatch: missing {missing}, unexpected {unexpected}")
+    return {"stem_stride": ckpt_stride, "fresh": fresh}

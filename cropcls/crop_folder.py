@@ -25,6 +25,7 @@ from PIL import Image
 from .augment import PhotometricJitter
 from .config import CropClsConfig
 from .crops import letterbox_crop, mask_tight_bbox, pad_box, scale_feats, to_model_input
+from .length_prior import require_border
 
 __all__ = [
     "CropFolder",
@@ -266,6 +267,8 @@ class CropFolder(torch.utils.data.Dataset):
                 "The border pixels are not in the PNGs and cannot be invented. Re-extract at "
                 f"pad_frac >= {cfg.pad_frac}, or train at <= {stored}."
             )
+        if cfg.length_prior:
+            require_border(self.meta, str(self.root))
         if not (cfg.mask_close and cfg.mask_dilate > 0):
             return
         border = self.meta.get("min_border_px")

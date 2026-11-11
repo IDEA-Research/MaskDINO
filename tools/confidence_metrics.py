@@ -40,7 +40,7 @@ from cropcls.config import load_config
 from cropcls.crops import letterbox_crop, mask_tight_bbox, scale_feats, to_model_input
 from cropcls.data import CropPipeline, apply_truncated_filter, apply_val_stride
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 # Scores to rank by. Every one is "higher = more trustworthy", so one AUROC sign convention
 # covers all four. msp is what a `p_pred >= t` threshold would actually use; the other three
@@ -309,11 +309,11 @@ def main():
 
     det = FrozenSingleClassDetector(cfg, device=args.device)
     pipe = CropPipeline(cfg, det, cfg.val_dataset, is_train=False)
-    model = build_classifier(cfg, len(pipe.class_names)).to(device)
+    model = build_classifier(cfg, len(pipe.class_names), pipe.class_names).to(device)
     state = torch.load(cfg.weights, map_location="cpu", weights_only=False)
     # strict: the only proof that this checkpoint belongs to this config's trunk. Several run
     # dirs were renamed on 2026-10-31 and one stale `weights` path survives in an artifact.
-    model.load_state_dict(state["model"])
+    load_weights(model, state, cfg)
     model.eval()
     print(f"trunk={cfg.trunk} crop={cfg.crop_size} mask_channel={cfg.mask_channel} "
           f"blackout={cfg.blackout}")

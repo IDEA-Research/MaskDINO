@@ -41,7 +41,7 @@ from cropcls.data import (
     dataset_class_names,
 )
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 logger = logging.getLogger("cropcls")
 
@@ -243,39 +243,20 @@ def main():
         logger.info("wrote %d contact sheets to %s", len(paths), out / "viz")
         return
 
-    model = build_classifier(cfg, len(class_names)).to(device)
+    model = build_classifier(cfg, len(class_names), class_names).to(device)
     logger.info(
         "classifier: trunk=%s dim=%d trainable=%s",
         cfg.trunk, model.feature_dim, f"{model.n_trainable():,}",
     )
     if cfg.weights:
         state = torch.load(cfg.weights, map_location="cpu", weights_only=False)
-        # The stem stride is a Conv2d ATTRIBUTE, not a parameter: a stride-2 and a stride-4
-        # trunk have identical state_dict keys and identical tensor shapes, so load_state_dict
-        # accepts the wrong one without error and then runs a 7x7 feature map where the weights
-        # expect 14x14. mask_channel is caught only because its conv changes shape and torch
-        # raises; nothing would raise here. Compare the EFFECTIVE stride, since stem_stride 0
-        # and 4 are the same convnext_tiny. A checkpoint with no recorded stride predates the
-        # field, which means the trunk's native stride - what every earlier run trained at.
-        ckpt_stride = state.get("stem_stride", model.native_stem_stride)
-        if ckpt_stride != model.stem_stride:
-            raise ValueError(
-                f"{cfg.weights} was trained with a first-conv stride of {ckpt_stride} but this "
-                f"model is built with {model.stem_stride}. The weights would load silently and "
-                "run at the wrong feature-map resolution. Set stem_stride to match, or point "
-                "weights= at a checkpoint from a run with this stride."
-            )
-        if cfg.scale_film and not any(k.startswith("film.") for k in state["model"]):
-            # Warm start from a plain checkpoint: FiLM starts at zero, so the loaded model is
-            # exactly that checkpoint at iteration 0. Only film.* may be missing.
-            missing, unexpected = model.load_state_dict(state["model"], strict=False)
-            if unexpected or any(not k.startswith("film.") for k in missing):
-                raise RuntimeError(f"checkpoint mismatch: missing {missing}, unexpected {unexpected}")
+        info = load_weights(model, state, cfg, source=cfg.weights)
+        if "film." in info["fresh"]:
             logger.info("FiLM warm start: film.* initialized fresh (zero output)")
-        else:
-            model.load_state_dict(state["model"])
+        if "len_" in info["fresh"]:
+            logger.info("length prior: stats from %s (checkpoint had none)", cfg.length_stats)
         logger.info("loaded weights from %s (iter %s, stem_stride %s)",
-                    cfg.weights, state.get("iteration"), ckpt_stride)
+                    cfg.weights, state.get("iteration"), info["stem_stride"])
 
     if args.eval_only and args.hungarian:
         from cropcls.export import evaluate_hungarian

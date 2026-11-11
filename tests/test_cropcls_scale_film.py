@@ -19,7 +19,7 @@ from cropcls import data as data_mod
 from cropcls import export as export_mod
 from cropcls.config import CropClsConfig
 from cropcls.crop_folder import CropFolder, patch_bbox, save_crop
-from cropcls.crops import SCALE_FEAT_DIM, mask_tight_bbox, scale_feats
+from cropcls.crops import AUX_DIM, mask_tight_bbox, scale_feats
 from cropcls.data import CropPipeline, StageTimer
 from cropcls.detector import Detections
 from cropcls.modeling.classifier import CropClassifier
@@ -124,7 +124,7 @@ def _models():
 def test_film_model_equals_the_plain_model_at_init():
     plain, film = _models()
     x = torch.randn(3, 4, 64, 64)
-    aux = torch.randn(3, SCALE_FEAT_DIM)
+    aux = torch.randn(3, AUX_DIM)
     with torch.no_grad():
         assert torch.equal(plain(x), film(x, aux))
 
@@ -133,7 +133,7 @@ def test_one_step_moves_the_film_output_layer_off_zero():
     _, film = _models()
     film.train()
     opt = torch.optim.SGD(film.parameters(), lr=0.1)
-    x, aux = torch.randn(4, 4, 64, 64), torch.randn(4, SCALE_FEAT_DIM)
+    x, aux = torch.randn(4, 4, 64, 64), torch.randn(4, AUX_DIM)
     loss = torch.nn.functional.cross_entropy(film(x, aux), torch.tensor([0, 1, 2, 3]))
     loss.backward()
     opt.step()
@@ -150,7 +150,7 @@ def test_plain_model_ignores_aux():
     plain, _ = _models()
     x = torch.randn(2, 4, 64, 64)
     with torch.no_grad():
-        assert torch.equal(plain(x), plain(x, torch.randn(2, SCALE_FEAT_DIM)))
+        assert torch.equal(plain(x), plain(x, torch.randn(2, AUX_DIM)))
 
 
 # --- every crop path feeds the same aux ------------------------------------------------
@@ -198,7 +198,7 @@ def test_live_batch_aux_is_scale_feats_of_each_frame_mask_once_per_rotation():
     cfg = _cfg(mask_dilate=8)            # dilation must NOT leak into aux
     image, inst, det = _frame_with_two_tools()
     b = _stub_pipe(cfg, image, inst, det).build_batch([0])
-    assert b.aux.shape == (len(b), SCALE_FEAT_DIM) and len(b) == 2 * 4
+    assert b.aux.shape == (len(b), AUX_DIM) and len(b) == 2 * 4
     for i, r in enumerate(b.records):
         assert torch.equal(b.aux[i], scale_feats(det.masks[r.pred_index]))
 

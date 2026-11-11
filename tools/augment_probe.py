@@ -39,7 +39,7 @@ from cropcls.config import load_config
 from cropcls.crops import letterbox_crop, mask_tight_bbox, scale_feats, to_model_input
 from cropcls.data import CropPipeline, apply_truncated_filter, apply_val_stride
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 ROTATIONS = (0, 90, 180, 270)
 PAD_FRACS = (0.05, 0.10, 0.20)
@@ -173,9 +173,9 @@ def main():
     print(f"val={cfg.val_dataset} stride={stride} -> {n_frames} frames, {n_gt} scored GT")
     det = FrozenSingleClassDetector(cfg, device=args.device)
     pipe = CropPipeline(cfg, det, cfg.val_dataset, is_train=False)
-    model = build_classifier(cfg, len(pipe.class_names)).to(device)
+    model = build_classifier(cfg, len(pipe.class_names), pipe.class_names).to(device)
     state = torch.load(cfg.weights, map_location="cpu", weights_only=False)
-    model.load_state_dict(state["model"])
+    load_weights(model, state, cfg)
     model.eval()
     print(f"weights={cfg.weights} trunk={cfg.trunk} crop={cfg.crop_size} "
           f"blackout={cfg.blackout} mask_channel={cfg.mask_channel}")

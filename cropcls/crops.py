@@ -30,10 +30,12 @@ __all__ = [
     "pad_box",
     "rotate_k90",
     "scale_feats",
+    "AUX_DIM",
     "to_model_input",
 ]
 
-SCALE_FEAT_DIM = 4
+SCALE_FEAT_DIM = 4   # the FiLM input: aux[:, :SCALE_FEAT_DIM]
+AUX_DIM = 5          # SCALE_FEAT_DIM + the edge flag (spec Step 13)
 
 
 def pad_box(
@@ -283,8 +285,10 @@ def scale_feats(mask: torch.Tensor) -> torch.Tensor:
     rectangle, not the axis-aligned box: the box's long edge shrinks when the tool is rotated,
     the rectangle's does not, and it is unchanged by the 90-degree rotation augmentation. A
     mask split by an occluder still spans its full extent, so length is lost only when an end
-    is hidden. Returns (4,) float32: log2(long/256), log2(short/32), log2(sqrt(area)/64),
-    fill - scaled to roughly +-1 for the set-C instrument sizes at 1024 px.
+    is hidden. Returns (AUX_DIM,) float32: log2(long/256), log2(short/32), log2(sqrt(area)/64),
+    fill - scaled to roughly +-1 for the set-C instrument sizes at 1024 px - and edge, 1.0 if a
+    mask pixel lies on the array border. On a full frame that is "cut by the frame"; on a stored
+    patch it is the same thing as long as every unclipped side kept >= 1 px of border (Step 13).
     """
     ys, xs = torch.nonzero(mask.detach().cpu(), as_tuple=True)
     area = float(ys.numel())
@@ -295,12 +299,15 @@ def scale_feats(mask: torch.Tensor) -> torch.Tensor:
     # minAreaRect spans pixel CENTRES, so an n-px side reads n-1; +1 gives the pixel extent
     # and keeps fill = area / (long*short) at ~1 for a solid bar instead of above it
     long_, short = max(w, h) + 1.0, min(w, h) + 1.0
+    H, W = mask.shape[-2:]
+    edge = bool(ys.min() == 0 or xs.min() == 0 or ys.max() == H - 1 or xs.max() == W - 1)
     return torch.tensor(
         [
             math.log2(long_ / 256.0),
             math.log2(short / 32.0),
             math.log2(math.sqrt(area) / 64.0),
             min(area / (long_ * short), 1.0),
+            float(edge),
         ],
         dtype=torch.float32,
     )
