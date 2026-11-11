@@ -553,7 +553,7 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       Verify: `tests/test_cropcls_scale_film.py` and `tests/test_cropcls_crop_folder.py` pass
       (full suite 412).
 
-- [ ] **Step 13 - fixed length and width prior on the logits** (`requirements_length_prior.md`).
+- [x] **Step 13 - fixed length and width prior on the logits** (`requirements_length_prior.md`).
       Step 12 showed the network does not learn to use size from an input, while a post-hoc
       product of the classifier with a length likelihood adds ~6 points of exact top-1 on piles.
       This step puts that product into the model during training, with its strength fixed, so the
@@ -583,8 +583,8 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       False`, `length_stats: str` (path), `length_prior_k: float = 1.0`,
       `length_prior_floor: float = 0.02`. The model holds `mu`, `sd` as buffers (saved in the
       checkpoint). `model.use_length_prior = False` drops the term for the appearance-only
-      diagnostic; the per-detection pass (`occ_analysis/pred_length_pass.py`) exposes it as
-      `--no-prior`.
+      diagnostic; the per-detection pass (`/data/janick.bilang/runs/occ_analysis/pred_length_pass.py`,
+      untracked) exposes it as `--no-prior`.
 
       **Statistics.** `tools/length_stats.py` reads a static crop folder and writes a JSON with
       per-class median and robust sd (1.4826 * MAD) of `L` and `W`. It uses only crops whose mask
@@ -594,7 +594,10 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       class order (`meta.json` order, not `sorted()`): a permuted mu/sd would raise nothing.
       `length_stats.py` raises on `min_border_px` missing or < 1, for the same reason as
       `CropFolder` below. These copy-paste crops include occluders, so their median L may sit
-      short of the single set's; both stats files are reported side by side. Both arms use this one file. Measured on the frozen controls with stats from the
+      short of the single set's; both stats files are reported side by side. *(Postflight: done as the training stats file
+      vs L/W measured on the single val set's detections by `pred_length_pass.py`
+      (`prior_step13/stats_side_by_side.py`), not a second `length_stats.py` file; the two
+      measurements differ by the +1 px of `scale_feats`, noted in the results.)* Both arms use this one file. Measured on the frozen controls with stats from the
       single val set, adding the width term to the length term raised piles exact by +0.3 to
       +1.2 (3 runs) and left cp-occ unchanged.
 
@@ -648,7 +651,9 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
         that is not;
       - `CropFolder` and `length_stats.py` raise without `min_border_px`;
       - `length_stats.py` output excludes edge crops and applies the sd floors;
-      - `aux` is `AUX_DIM` wide on the live, static, export and empty-batch paths;
+      - `aux` is `AUX_DIM` wide on the live, static, export and empty-batch paths; *(postflight:
+        live is asserted, static and export via equality with `scale_feats`; the empty-batch
+        zeros in `data.py` need a detector to reach and are checked by reading only)*;
       - `validate()` rejects `length_prior` with `augment_frames` and without a readable
         `length_stats`.
       Existing Step 12 tests still pass with `aux` now 5 wide. `cropcls/README.md` gains rows for
@@ -656,6 +661,20 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
 
       **Out of scope for Step 13:** learned `k` or floor; the occluder-channel gate (planned
       Step 14); length dropout (arm C); any change to the detector.
+
+      **Outcome, 2026-11-11: no significant change, B lower on every set.** Piles classaware_f1
+      A 61.84 +- 2.16 vs B 57.75 +- 0.48 (paired p = 0.081); single 88.49 vs 85.95 (p = 0.26);
+      cp-occ 80.67 vs 78.71 (p = 0.19). By the decision rule this is "no significant change".
+      The diagnostic goes against the hypothesis: with the prior off, B's family top-1 on piles is
+      0.689 vs A's 0.750 (exact 0.495 vs 0.564), so training with the fixed prior made the trunk
+      worse at appearance, not better. Arm A itself (control + product at inference) is +6.6
+      piles f1 over the Step 12 control (55.24 -> 61.84, p = 0.019, same checkpoints), so on this
+      evidence the prior belongs at inference as a product, not in training. The prior's length sd is at its 3 px floor for 22 of 23 classes on
+      the training crops while the val single set measures 4-11 px; that mismatch is recorded in
+      `cropcls-results.md` section 12. Results and scripts: `/data/janick.bilang/runs/prior_step13`. The diagnostic paired p,
+      A vs control, and the train- vs val-stats product are follow-ups outside the decision
+      rule (`followups13.py`); `compare.py` here means `/data/janick.bilang/runs/film_step12/compare.py`
+      (untracked).
 
 **Out of scope (explicit):** phase 2 / set B, COCO AP as a headline metric (argmax cannot hedge
 the way `instance_inference`'s `topk(100)` does), any modification to `maskdino/` or `train_net.py`. The owner made a change to register_hdf5_instance.py, in order to register the dataset correctly, this change is approved. (That change has since been superseded by `maskdino/data/datasets/images_root.py`, which resolves the images root from `$SURGICAL_IMAGES_ROOT` or a single `~/training/images_*` match; same approval, same carve-out.)

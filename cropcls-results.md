@@ -636,3 +636,64 @@ conclusion: the 4-seed gap is -1.9.
   every run. Length statistics come from each run's single-set pass, so single-set post-hoc numbers
   are in-sample; piles and cp-occ are not. Reference, frozen `20261109083120` classifier: fixed
   product 0.610 piles / 0.894 single, learned per-detection weight 0.641 / 0.924.
+
+## 12. Fixed length and width prior in training (spec Step 13), 2026-11-11
+
+Set-C copy-paste classifier (`configs/cropcls/setc_cp_cxt_c448.yaml`), seeds 0-2. Prior:
+`logit_c = head(f)_c + k * (g_L + g_W)`, k = 1, floor 0.02, zero when the mask touches the frame.
+Stats from the training crops, `crops/setc_train_cp`. Arm A: the Step 12 control checkpoints with
+the prior added at inference only (no retraining). Arm B: trained with the prior on.
+Runs and scripts: `/data/janick.bilang/runs/prior_step13` (`compare13.py`,
+`stats_side_by_side.py`; the p-values for the diagnostic and for A vs control, and the
+train- vs val-stats product, are follow-ups outside the decision rule, from `followups13.py`). Rank metric: `classaware_f1`, Hungarian, `score_mode=detector`. Host
+dbe-cia-sl19-01, one GPU per run.
+
+**No significant change by the pre-registered rule, but B is lower on every set.**
+classaware_f1, mean +- sd over seeds 0-2, paired t-test B vs A:
+
+| set | A (product at inference) | B (trained with prior) | diff | p |
+|---|---|---|---|---|
+| piles (ranked) | 61.84 +- 2.16 | 57.75 +- 0.48 | -4.09 | 0.081 |
+| single | 88.49 +- 1.97 | 85.95 +- 1.00 | -2.54 | 0.26 |
+| cp-occ | 80.67 +- 1.28 | 78.71 +- 1.40 | -1.96 | 0.19 |
+
+Per seed (s0 / s1 / s2), piles f1: A 59.45 / 63.66 / 62.43, B 57.52 / 57.43 / 58.31. B is lower
+than A on every seed of every set.
+
+Exact / family / +-10 mm top-1 on matched detections, mean over seeds:
+
+| arm, prior | piles | single | cp-occ |
+|---|---|---|---|
+| A, prior on | 0.631 / 0.776 / 0.749 | 0.885 / 0.967 / 0.959 | 0.826 / 0.960 / 0.941 |
+| B, prior on | 0.590 / 0.735 / 0.705 | 0.860 / 0.967 / 0.958 | 0.805 / 0.960 / 0.939 |
+| A, prior off (= Step 12 control) | 0.564 / 0.750 / 0.716 | 0.842 / 0.970 / 0.957 | 0.784 / 0.962 / 0.938 |
+| B, prior off | 0.495 / 0.689 / 0.654 | 0.790 / 0.967 / 0.953 | 0.737 / 0.957 / 0.930 |
+
+- **The hypothesis does not hold.** If the fixed prior freed the trunk to focus on appearance,
+  B with the prior switched off would beat A on family top-1. It is lower: 0.689 vs 0.750 on
+  piles, lower on every seed (paired p = 0.002), and exact is 0.495 vs 0.564. Training with the prior made the appearance part worse.
+- **The prior as a product at inference does help.** A vs the Step 12 control, same checkpoints:
+  piles f1 55.24 -> 61.84 (+6.6, paired p = 0.019), single 84.18 -> 88.49, cp-occ 76.65 -> 80.67.
+- **A likely reason, not tested:** on the training crops the prior is very sharp and exact. 45 of
+  the 46 sds sit at their floor (3 px L, 1.5 px W; screw_driver_1_1 length sd is 3.4) and the levels are about 20.6 px apart. So in training
+  the prior alone nearly separates the length levels, and the head gets little gradient to learn
+  them from appearance. On val the measured lengths are wider and shifted (table below), so the
+  prior is weaker there, and B's trunk has less to fall back on. B's training loss starts at
+  0.97 vs 3.15 for the control, which fits this reading (iteration-20 loss, seed 0; B seeds 0-2 0.97 / 0.88 / 0.97, control
+  3.15 / 3.15 / 3.13).
+- B's seed sd on piles (0.48) is lower than A's (2.16). With three seeds that is a weak signal.
+
+**Prior stats vs the single val set** (`stats_side_by_side.py`; val = `ctrl_s0` detections,
+non-edge, median and 1.4826 * MAD). Val lengths are 2.8-6.7 px shorter (screw_driver_1_1: 0.6 px longer), and val sd is 4-11 px
+against the 3 px floor. Part of the offset is measurement: training stats use `scale_feats`
+(minimum-area rectangle + 1 px on the stored mask), val uses `cv2.minAreaRect` without the +1
+on the predicted full-frame mask. Training stats were kept as pre-registered, so no val data
+enters the prior. Post-hoc L+W product on the Step 12 control pred.npz, seeds 0-2, piles exact: 0.630 with
+the training stats vs 0.639 with stats from the single val set, so the gap costs about 1 point.
+
+| class (examples) | train L | val L | train W | val W |
+|---|---|---|---|---|
+| scissor_blunt_nominal | 327.8 +- 3.0 | 324.1 +- 4.2 | 131.3 +- 1.5 | 129.0 +- 1.7 |
+| scissor_sharp_40 | 433.5 +- 3.0 | 428.0 +- 7.3 | 131.2 +- 1.5 | 129.2 +- 2.4 |
+| scissor_sharp_blunt_50 | 443.2 +- 3.0 | 438.5 +- 8.7 | 131.2 +- 1.5 | 128.8 +- 2.1 |
+| screw_driver_1_3 | 459.1 +- 3.0 | 456.3 +- 10.9 | 53.7 +- 1.5 | 52.9 +- 1.8 |

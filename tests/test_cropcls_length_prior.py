@@ -155,7 +155,9 @@ def test_plain_checkpoint_loads_into_a_prior_model_with_the_files_stats(tmp_path
 
 def test_plain_checkpoint_loads_into_a_film_plus_prior_model(tmp_path):
     cfg = _cfg(tmp_path, scale_film=True)
-    load_weights(build_classifier(cfg, 3, CLASSES), _state(_model(prior=False)), cfg)
+    m = build_classifier(cfg, 3, CLASSES)
+    assert load_weights(m, _state(_model(prior=False)), cfg)["fresh"] == ["film.", "len_"]
+    assert torch.equal(m.len_mu, MU) and torch.equal(m.len_sd, SD)
 
 
 def test_checkpoint_with_a_different_prior_raises(tmp_path):
