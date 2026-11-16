@@ -1,0 +1,49 @@
+# Occluder channel (spec Step 11) on set C: setc_cp_cxt_c448 plus ch4 = union of the OTHER
+# predicted instances. Both arms launch from this file; only occluder_channel, seed and
+# output_dir differ. pad_frac is 0.10 for both, not setc_cp's 0.0: an occluder that cuts a
+# tool's end lies past the visible mask, so with no rim the channel cannot see it.
+# crops/setc_train_cp was extracted at pad 0.2 with .occ.png sidecars, so no re-extraction.
+detector_checkpoint: /home/janick.bilang/dev/MaskDINO/runs/20261108204507_p2_setc_cp/model_final.pth
+detector_score_thresh: 0.5
+
+train_dataset: train_phase2_set_c_mm-1.0x
+val_dataset: val_set_c_mm-1.0x
+
+crop_folder: crops/setc_train_cp
+
+augment_frames: false
+
+crop_size: 448
+rotations: [0, 90, 180, 270]
+
+mask_channel: true
+occluder_channel: true
+blackout: false
+mask_dilate: 0
+
+pad_frac: 0.10
+
+iou_floor: 0.5
+runner_up_ceiling: 0.2
+
+val_stride: 1
+exclude_truncated: true
+
+trunk: convnext_tiny
+trunk_pretrained: true
+freeze_trunk: false
+
+weights: ""
+
+base_lr: 0.0001
+weight_decay: 0.05
+
+max_iter: 4000
+ims_per_batch: 4
+crops_per_batch: 64
+warmup_iters: 250
+checkpoint_period: 99999
+eval_period: 1000
+amp: true
+
+output_dir: /data/janick.bilang/runs/occ_setc/unnamed

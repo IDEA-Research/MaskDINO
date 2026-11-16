@@ -448,6 +448,46 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       folder-vs-live bit identity holds with the channel on; a `crops/` folder lacking the
       occluder raster raises rather than yielding zeros.
 
+- [x] **Step 11b - occluder channel on set C** (`requirements_occlusion_channel.md`, 2026-11-11/12,
+      branch 59). Config `configs/cropcls/setc_occ5_cxt_c448.yaml`. Copy-paste crops
+      `crops/setc_train_cp`, which already have `.occ.png` sidecars (pad 0.2). Both arms use
+      pad_frac 0.10, so an occluder past the visible end of a tool is inside the crop. 3 seeds
+      per arm. Runs, logs and `compare.py` are in `/data/janick.bilang/runs/occ_setc`.
+      Measured on 6 idle Quadro RTX 6000s, one run per GPU.
+
+      **Result: no gain.** classaware_f1, score_mode=detector, mean±sd over seeds 0-2 (paired
+      t-test):
+
+      | val set | control | occluder ch | occ-ctrl | p |
+      |---|---|---|---|---|
+      | piles `val_set_c_mm-1.0x` | 52.02±1.57 | 51.03±3.27 | -0.99 | 0.72 |
+      | single `val_set_c_single_mm-1.0x` | 83.11±1.26 | 82.67±1.81 | -0.44 | 0.82 |
+      | cp-occ `val_set_c_cpocc_mm-1.0x` | 75.38±0.91 | 74.78±2.21 | -0.60 | 0.77 |
+
+      The network does use the channel. Mean |w| of the first-conv ch4 weights moved from zero
+      to 0.0023-0.0028, above the own-mask ch3 weights (0.0015). Class-agnostic f1 and matched
+      IoU are identical across arms, as they must be with the same frozen segmenter. The
+      length-prior follow-up needs branch 56's prior code, which this branch does not have.
+
+- [x] **Step 11c - camera-jittered training renders on set C** (2026-11-16, branch 59).
+      `train_phase2_set_c_jitter_mm-1.0x` has the same 460 single-tool frames (20 per
+      instrument), re-rendered with `camera_jitter` (1 deg, 1 cm). Measured against the
+      original, the tool shifts by a median of 37 px, and its length changes by an sd of 5.7 px
+      (±1.5%) against a 20 px class step. Config `configs/cropcls/setc_jitonly_cxt_c448.yaml`,
+      copy-paste crops `crops/setc_train_jit_cp` (27575 crops). Same as the Step 11b control
+      otherwise (no occluder channel, pad 0.10). 3 seeds. Runs are in
+      `/data/janick.bilang/runs/jitonly_setc`.
+
+      | val set | original renders | jittered renders | diff | paired p |
+      |---|---|---|---|---|
+      | piles | 52.02±1.57 | 55.15±1.03 | +3.13 | 0.041 |
+      | single | 83.11±1.26 | 83.41±0.92 | +0.30 | 0.76 |
+      | cp-occ | 75.38±0.91 | 76.02±1.21 | +0.65 | 0.64 |
+
+      At most a small piles gain, borderline at 3 seeds. Single and cp-occ are unchanged. The
+      jittered set is also a new render (new noise, new copy-paste composites), so a
+      non-jittered re-render would be needed to attribute the piles gain to the camera.
+
 **Out of scope (explicit):** phase 2 / set B, COCO AP as a headline metric (argmax cannot hedge
 the way `instance_inference`'s `topk(100)` does), any modification to `maskdino/` or `train_net.py`. The owner made a change to register_hdf5_instance.py, in order to register the dataset correctly, this change is approved. (That change has since been superseded by `maskdino/data/datasets/images_root.py`, which resolves the images root from `$SURGICAL_IMAGES_ROOT` or a single `~/training/images_*` match; same approval, same carve-out.)
 

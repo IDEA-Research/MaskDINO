@@ -1,0 +1,51 @@
+# Set C trained on the camera-jittered re-render (train_phase2_set_c_jitter_mm-1.0x), 20 images
+# per instrument like the original. Control setup otherwise (no occluder channel, pad 0.10);
+# compare with the occluder-off runs of setc_occ5_cxt_c448.yaml. Spec Step 11c.
+# Extract the crops with:
+#   PYTHONPATH=. python tools/extract_crops.py --config configs/cropcls/setc_jitonly_cxt_c448.yaml \
+#       --copy-paste 10 --pad-frac 0.20 --shard I/N --out crops/setc_train_jit_cp
+#   python tools/merge_crop_shards.py crops/setc_train_jit_cp
+detector_checkpoint: /home/janick.bilang/dev/MaskDINO/runs/20261108204507_p2_setc_cp/model_final.pth
+detector_score_thresh: 0.5
+
+train_dataset: train_phase2_set_c_jitter_mm-1.0x
+val_dataset: val_set_c_mm-1.0x
+
+crop_folder: crops/setc_train_jit_cp
+
+augment_frames: false
+
+crop_size: 448
+rotations: [0, 90, 180, 270]
+
+mask_channel: true
+occluder_channel: false
+blackout: false
+mask_dilate: 0
+
+pad_frac: 0.10
+
+iou_floor: 0.5
+runner_up_ceiling: 0.2
+
+val_stride: 1
+exclude_truncated: true
+
+trunk: convnext_tiny
+trunk_pretrained: true
+freeze_trunk: false
+
+weights: ""
+
+base_lr: 0.0001
+weight_decay: 0.05
+
+max_iter: 4000
+ims_per_batch: 4
+crops_per_batch: 64
+warmup_iters: 250
+checkpoint_period: 99999
+eval_period: 1000
+amp: true
+
+output_dir: /data/janick.bilang/runs/jitonly_setc/unnamed
