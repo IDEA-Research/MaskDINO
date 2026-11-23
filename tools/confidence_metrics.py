@@ -37,10 +37,10 @@ import torch.nn.functional as F
 import maskdino  # noqa: F401  - registers the hdf5 datasets
 from cropcls.assign import assign_gt_classes
 from cropcls.config import load_config
-from cropcls.crops import letterbox_crop, mask_tight_bbox, to_model_input
+from cropcls.crops import letterbox_crop, mask_tight_bbox, scale_feats, to_model_input
 from cropcls.data import CropPipeline, apply_truncated_filter, apply_val_stride
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 # Scores to rank by. Every one is "higher = more trustworthy", so one AUROC sign convention
 # covers all four. msp is what a `p_pred >= t` threshold would actually use; the other three
@@ -96,7 +96,7 @@ def collect(model, pipe, device, max_frames=None, step=None):
             )
 
             image = m["image"].float()
-            crops, keep, geom = [], [], []
+            crops, auxs, keep, geom = [], [], [], []
             for k in range(len(det)):
                 tight = mask_tight_bbox(pred_masks[k])
                 if tight is None:
@@ -119,13 +119,15 @@ def collect(model, pipe, device, max_frames=None, step=None):
                 # `keep` - a dropped crop would otherwise shift every later row's scale columns
                 # onto the wrong detection.
                 geom.append((int(y1 - y0), int(x1 - x0), int(pred_masks[k].sum())))
+                auxs.append(scale_feats(pred_masks[k]))
                 keep.append(k)
             if not crops:
                 continue
 
             x = torch.stack(crops).to(device)
+            aux = torch.stack(auxs).to(device)
             with torch.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
-                logits = model(x)
+                logits = model(x, aux)
             logits = logits.float().cpu()
             prob = F.softmax(logits, dim=1)
             top2 = prob.topk(min(2, prob.shape[1]), dim=1)
@@ -307,11 +309,11 @@ def main():
 
     det = FrozenSingleClassDetector(cfg, device=args.device)
     pipe = CropPipeline(cfg, det, cfg.val_dataset, is_train=False)
-    model = build_classifier(cfg, len(pipe.class_names)).to(device)
+    model = build_classifier(cfg, len(pipe.class_names), pipe.class_names).to(device)
     state = torch.load(cfg.weights, map_location="cpu", weights_only=False)
     # strict: the only proof that this checkpoint belongs to this config's trunk. Several run
     # dirs were renamed on 2026-10-31 and one stale `weights` path survives in an artifact.
-    model.load_state_dict(state["model"])
+    load_weights(model, state, cfg)
     model.eval()
     print(f"trunk={cfg.trunk} crop={cfg.crop_size} mask_channel={cfg.mask_channel} "
           f"blackout={cfg.blackout}")

@@ -41,7 +41,7 @@ from cropcls.data import (
     dataset_class_names,
 )
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 logger = logging.getLogger("cropcls")
 
@@ -109,8 +109,9 @@ def evaluate(model, pipeline: CropPipeline, device, max_frames=None) -> dict:
             continue
         x = batch.crops.to(device, non_blocking=True)
         y = batch.labels.to(device, non_blocking=True)
+        aux = batch.aux.to(device, non_blocking=True)
         with torch.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
-            logits = model(x)
+            logits = model(x, aux)
             loss = F.cross_entropy(logits.float(), y)
         pred = logits.float().argmax(1)
         correct += int((pred == y).sum())
@@ -242,31 +243,20 @@ def main():
         logger.info("wrote %d contact sheets to %s", len(paths), out / "viz")
         return
 
-    model = build_classifier(cfg, len(class_names)).to(device)
+    model = build_classifier(cfg, len(class_names), class_names).to(device)
     logger.info(
         "classifier: trunk=%s dim=%d trainable=%s",
         cfg.trunk, model.feature_dim, f"{model.n_trainable():,}",
     )
     if cfg.weights:
         state = torch.load(cfg.weights, map_location="cpu", weights_only=False)
-        # The stem stride is a Conv2d ATTRIBUTE, not a parameter: a stride-2 and a stride-4
-        # trunk have identical state_dict keys and identical tensor shapes, so load_state_dict
-        # accepts the wrong one without error and then runs a 7x7 feature map where the weights
-        # expect 14x14. mask_channel is caught only because its conv changes shape and torch
-        # raises; nothing would raise here. Compare the EFFECTIVE stride, since stem_stride 0
-        # and 4 are the same convnext_tiny. A checkpoint with no recorded stride predates the
-        # field, which means the trunk's native stride - what every earlier run trained at.
-        ckpt_stride = state.get("stem_stride", model.native_stem_stride)
-        if ckpt_stride != model.stem_stride:
-            raise ValueError(
-                f"{cfg.weights} was trained with a first-conv stride of {ckpt_stride} but this "
-                f"model is built with {model.stem_stride}. The weights would load silently and "
-                "run at the wrong feature-map resolution. Set stem_stride to match, or point "
-                "weights= at a checkpoint from a run with this stride."
-            )
-        model.load_state_dict(state["model"])
+        info = load_weights(model, state, cfg, source=cfg.weights)
+        if "film." in info["fresh"]:
+            logger.info("FiLM warm start: film.* initialized fresh (zero output)")
+        if "len_" in info["fresh"]:
+            logger.info("length prior: stats from %s (checkpoint had none)", cfg.length_stats)
         logger.info("loaded weights from %s (iter %s, stem_stride %s)",
-                    cfg.weights, state.get("iteration"), ckpt_stride)
+                    cfg.weights, state.get("iteration"), info["stem_stride"])
 
     if args.eval_only and args.hungarian:
         from cropcls.export import evaluate_hungarian
@@ -337,8 +327,8 @@ def main():
 
         def _crop_stream():
             while True:                      # a fresh iter() reshuffles
-                for x, y in loader:
-                    yield CropBatch(crops=x, labels=y)
+                for x, aux, y in loader:
+                    yield CropBatch(crops=x, labels=y, aux=aux)
 
         stream = _crop_stream()
     else:
@@ -354,9 +344,10 @@ def main():
             continue
         x = batch.crops.to(device, non_blocking=True)
         y = batch.labels.to(device, non_blocking=True)
+        aux = batch.aux.to(device, non_blocking=True)
         with timer("classifier", sync=True):
             with torch.autocast("cuda", dtype=torch.float16, enabled=scaler.is_enabled()):
-                loss = F.cross_entropy(model(x).float(), y)
+                loss = F.cross_entropy(model(x, aux).float(), y)
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.step(opt)

@@ -12,7 +12,7 @@ import maskdino  # noqa: F401
 from cropcls.config import load_config
 from cropcls.data import CropPipeline
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--run", required=True)
@@ -26,8 +26,8 @@ cfg = load_config(run / "config.json"); cfg.output_dir = str(run); cfg.ims_per_b
 device = torch.device(a.device)
 det = FrozenSingleClassDetector(cfg, device=a.device)
 pipe = CropPipeline(cfg, det, cfg.val_dataset, is_train=False)
-model = build_classifier(cfg, len(pipe.class_names)).to(device)
-model.load_state_dict(torch.load(run / "model_final.pth", map_location="cpu")["model"])
+model = build_classifier(cfg, len(pipe.class_names), pipe.class_names).to(device)
+load_weights(model, torch.load(run / "model_final.pth", map_location="cpu", weights_only=False), cfg)
 model.eval()
 
 ys, ps = [], []
@@ -36,7 +36,7 @@ with torch.no_grad():
         b = pipe.build_batch(list(range(s, min(s + cfg.ims_per_batch, a.frames))), rotations=[0])
         if len(b) == 0:
             continue
-        lg = model(b.crops.to(device)).float()
+        lg = model(b.crops.to(device), b.aux.to(device)).float()
         ys.append(b.labels); ps.append(lg.argmax(1).cpu())
 y, p = torch.cat(ys), torch.cat(ps)
 names = pipe.class_names

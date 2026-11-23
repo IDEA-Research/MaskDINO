@@ -36,6 +36,13 @@ unmerged, so registering an architecture would have blocked this work on that me
 | ...and the channel is still **learnable** | zero weights ignore channel 3 entirely, so the equivalence above passes just as well on a frozen or detached channel | `test_one_step_moves_the_mask_weights_off_zero` |
 | channel 3 **is** the co-rotated letterboxed mask, in {0,1} | same reason: equivalence at init is satisfied by a channel of zeros or of noise, so the content needs its own assertion | `test_mask_channel_is_the_letterboxed_mask_not_zeros` |
 | all three crop paths emit the **same** channel layout | live, static-folder and `--hungarian` disagreeing does not raise - it just reports a worse number | `test_folder_crop_equals_live_crop` (parametrized over `mask_channel`) |
+| under `scale_film`, the FiLM model **is** the plain model at init | the film output layer is zero, so the arm measures scale rather than a perturbed head | `test_film_model_equals_the_plain_model_at_init` |
+| `aux` is `scale_feats` of the **undilated full-frame** mask on all three paths | the letterbox discards size, and a dilated or letterboxed mask gives a wrong size that raises nothing | `test_live_batch_aux_is_scale_feats_of_each_frame_mask_once_per_rotation`, `test_export_path_feeds_the_model_scale_feats_of_the_frame_mask`, `test_static_folder_aux_equals_the_full_frame_mask` |
+| a FiLM model called without `aux` **raises** | a missed call site would otherwise score a worse number silently | `test_film_model_without_aux_raises` |
+| the static folder's edge flag **equals** the frame mask's | a stored patch is clipped at the frame, so "mask on the patch border" means "cut by the frame" only while every unclipped side kept >= 1 px; `CropFolder` and `length_stats.py` raise on `min_border_px` < 1 | `test_static_patch_edge_flag_equals_the_frame_masks`, `test_static_folder_without_min_border_raises_under_the_prior` |
+| the length prior is **float32** and finite | in fp16, z^2 overflows a few hundred px from every class and the row turns NaN | `test_prior_is_float32_and_finite_with_fp16_inputs_under_fp16_autocast` |
+| the prior stats are in the **model's** class order | set C's `sorted()` and `thing_classes` disagree; a permuted prior raises nothing | `test_stats_in_a_different_class_order_raise` |
+| a checkpoint's prior must **equal** `length_stats` | otherwise a run scores with a prior other than the one its config names | `test_checkpoint_with_a_different_prior_raises` |
 
 ## Traps that cost real time
 

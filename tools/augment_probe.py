@@ -36,10 +36,10 @@ import maskdino  # noqa: F401  - registers the hdf5 datasets
 from cropcls.assign import assign_gt_classes
 from cropcls.augment import PhotometricJitter
 from cropcls.config import load_config
-from cropcls.crops import letterbox_crop, mask_tight_bbox, to_model_input
+from cropcls.crops import letterbox_crop, mask_tight_bbox, scale_feats, to_model_input
 from cropcls.data import CropPipeline, apply_truncated_filter, apply_val_stride
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 ROTATIONS = (0, 90, 180, 270)
 PAD_FRACS = (0.05, 0.10, 0.20)
@@ -121,13 +121,15 @@ def probe(model, pipe, device, keep_classes, n_photo, batch, max_frames=None, st
                             tags.append((pf, photo, deg))
                 if not variants:
                     continue
+                sf = scale_feats(pm[k])   # every variant is the same mask: one aux for all
 
                 preds, msps = [], []
                 for s in range(0, len(variants), batch):
                     x = torch.stack(variants[s:s + batch]).to(device)
+                    aux = sf.expand(len(x), -1).to(device)
                     with torch.autocast("cuda", dtype=torch.float16,
                                         enabled=device.type == "cuda"):
-                        lg = model(x)
+                        lg = model(x, aux)
                     p = F.softmax(lg.float(), dim=1).cpu()
                     v, i = p.max(1)
                     preds += [int(t) for t in i]
@@ -171,9 +173,9 @@ def main():
     print(f"val={cfg.val_dataset} stride={stride} -> {n_frames} frames, {n_gt} scored GT")
     det = FrozenSingleClassDetector(cfg, device=args.device)
     pipe = CropPipeline(cfg, det, cfg.val_dataset, is_train=False)
-    model = build_classifier(cfg, len(pipe.class_names)).to(device)
+    model = build_classifier(cfg, len(pipe.class_names), pipe.class_names).to(device)
     state = torch.load(cfg.weights, map_location="cpu", weights_only=False)
-    model.load_state_dict(state["model"])
+    load_weights(model, state, cfg)
     model.eval()
     print(f"weights={cfg.weights} trunk={cfg.trunk} crop={cfg.crop_size} "
           f"blackout={cfg.blackout} mask_channel={cfg.mask_channel}")

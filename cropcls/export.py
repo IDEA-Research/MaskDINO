@@ -35,7 +35,7 @@ from detectron2.structures import Boxes, Instances
 from maskdino.evaluation.hungarian_instance_evaluation import HungarianInstanceEvaluator
 
 from .config import CropClsConfig
-from .crops import letterbox_crop, mask_tight_bbox, to_model_input
+from .crops import letterbox_crop, mask_tight_bbox, scale_feats, to_model_input
 from .data import CropPipeline, apply_val_stride
 
 logger = logging.getLogger("cropcls.export")
@@ -141,7 +141,7 @@ def evaluate_hungarian(
         # so a channel layout that disagrees with training here does not raise - it just
         # reports a worse number (to_model_input's own warning).
         occ_all = masks.any(0) if cfg.occluder_channel else None
-        crops, keep_idx = [], []
+        crops, auxs, keep_idx = [], [], []
         for k in range(len(det)):
             tight = mask_tight_bbox(masks[k])
             if tight is None:
@@ -169,12 +169,14 @@ def evaluate_hungarian(
                                mask_channel=cfg.mask_channel,
                                occluder_channel=cfg.occluder_channel)
             )
+            auxs.append(scale_feats(masks[k]))   # undilated full-frame mask, as in training
             keep_idx.append(k)
 
         if crops:
             x = torch.stack(crops).to(device)
+            aux = torch.stack(auxs).to(device)
             with torch.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
-                logits = model(x)
+                logits = model(x, aux)
             prob = F.softmax(logits.float(), dim=1)
             cls_prob, pred_classes = prob.max(1)
             obj = det.scores.cpu()[keep_idx]

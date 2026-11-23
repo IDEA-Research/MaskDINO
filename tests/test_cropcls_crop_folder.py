@@ -135,7 +135,7 @@ def test_folder_crop_equals_live_crop(tmp_path, dilate, close, mask_channel, bla
     assert len(ds) == 5
     by_name = {p.name: i for i, (p, _) in enumerate(ds.items)}
     for name, cls, frame, mask in truth:
-        got, label = ds[by_name[name]]
+        got, _, label = ds[by_name[name]]
         assert ds.class_names[label] == cls
         assert torch.equal(got, _live(frame, mask, cfg)), (
             f"{name} dilate={dilate} close={close} "
@@ -184,9 +184,9 @@ def test_photometric_runs_before_blackout(tmp_path):
     root, _ = _folder(tmp_path)
     ds = CropFolder(root, cfg, is_train=True, seed=3)
     torch.manual_seed(0)
-    a, _ = ds[0]
+    a, _, _ = ds[0]
     torch.manual_seed(1)
-    b, _ = ds[0]
+    b, _, _ = ds[0]
     assert not torch.equal(a, b), "photometric did not fire"
 
     plain = CropFolder(root, _cfg(photometric=False), is_train=False)[0][0]
@@ -236,7 +236,7 @@ def test_written_folder_loads_back(tmp_path):
 
     ds = CropFolder(out, _cfg(), is_train=False)
     assert len(ds) == 1
-    got, label = ds[0]
+    got, _, label = ds[0]
     assert ds.class_names[label] == CLASSES[1]
     assert torch.equal(got, _live(frame, mask, _cfg()))
 
@@ -276,7 +276,7 @@ def test_class_order_comes_from_thing_classes_not_sorted_dirs(tmp_path):
     assert ds.class_names != sorted(CLASSES), "the fixture stopped exercising the mismatch"
     by_name = {p.name: i for i, (p, _) in enumerate(ds.items)}
     for name, cls, _frame, _mask in truth:
-        _, label = ds[by_name[name]]
+        _, _, label = ds[by_name[name]]
         assert ds.class_names[label] == cls, f"{name} labelled {ds.class_names[label]}, not {cls}"
 
 
@@ -300,7 +300,7 @@ def test_a_folder_outside_the_label_space_raises(tmp_path):
 def test_every_batch_has_the_configured_crop_count(tmp_path):
     """Constant batch size is what makes BatchNorm statistics comparable between steps."""
     root, _ = _folder(tmp_path, n=9)
-    sizes = [x.shape[0] for x, _ in build_loader(_cfg(crops_per_batch=4), root, True, seed=0)]
+    sizes = [x.shape[0] for x, _, _ in build_loader(_cfg(crops_per_batch=4), root, True, seed=0)]
     assert sizes == [4, 4], sizes
 
 
@@ -309,7 +309,7 @@ def test_successive_passes_draw_in_a_different_order(tmp_path):
     multiset is identical by construction and a multiset assertion could not fail."""
     root, _ = _folder(tmp_path, n=12)
     cfg = _cfg(crops_per_batch=2)
-    runs = [[tuple(y.tolist()) for _, y in build_loader(cfg, root, True, seed=s)] for s in (0, 1)]
+    runs = [[tuple(y.tolist()) for _, _, y in build_loader(cfg, root, True, seed=s)] for s in (0, 1)]
     assert sorted(x for b in runs[0] for x in b) == sorted(x for b in runs[1] for x in b)
     assert runs[0] != runs[1], "two passes drew in the same order"
 
@@ -337,7 +337,7 @@ def test_eval_loader_keeps_the_short_final_batch(tmp_path):
     """drop_last on val would silently score fewer crops than the folder holds."""
     root, _ = _folder(tmp_path, n=5)
     loader = build_loader(_cfg(crops_per_batch=2), root, is_train=False)
-    assert sum(x.shape[0] for x, _ in loader) == 5
+    assert sum(x.shape[0] for x, _, _ in loader) == 5
 
 
 def test_too_few_crops_for_one_batch_raises(tmp_path):
@@ -458,7 +458,7 @@ def test_pad_frac_keeps_the_background_out_of_the_mask(tmp_path):
     """
     root, _ = _folder(tmp_path, pad_frac=0.20)
     cfg = _cfg(pad_frac=0.20, blackout=True, mask_channel=True)
-    x, _label = CropFolder(root, cfg, is_train=False)[0]
+    x, _aux, _label = CropFolder(root, cfg, is_train=False)[0]
     occupancy = x[3]
     assert occupancy.sum() > 0
     # every RGB pixel outside the mask is the pad value, normalized

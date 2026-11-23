@@ -448,6 +448,233 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       folder-vs-live bit identity holds with the channel on; a `crops/` folder lacking the
       occluder raster raises rather than yielding zeros.
 
+- [x] **Step 12 - scale awareness via FiLM** (`requirements_scale.md`). Give the classifier
+      back the instance's real size, which the letterbox throws away, by modulating the pooled
+      trunk features with a small network fed per-instance geometry.
+
+      **Why, measured** (set C, 2026-11-09/10, `/data/janick.bilang/runs/occ_analysis`). The
+      set-C classes inside a family differ only in length (nominal, +10 ... +50 mm), and
+      `letterbox_crop` scales every crop to the same long edge. The long side of the predicted
+      mask's minimum-area rectangle grows ~20 px per +10 mm with a 4-9 px spread inside a class;
+      length alone picks the right level 90-98% of the time on single tools. A post-hoc product
+      of the frozen classifier with a length likelihood raised exact top-1 0.539 -> 0.610 on
+      `val_set_c_mm-1.0x` and 0.826 -> 0.894 on `val_set_c_single_mm-1.0x`, with a learned
+      per-detection weight 0.64 / 0.92. This step tests whether learning it end to end does the
+      same or better. The camera is fixed (user, 2026-11-10), so pixel size is a stable cue on
+      these sets; `cropcls-scale-feature-notes.md` section 4's shortcut warning still applies
+      to any other camera setup.
+
+      **Design - FiLM on the pooled features** (`cropcls-scale-feature-notes.md` section 5,
+      FiLM variant). `f = trunk(x)` (pooled, `feature_dim`), `gamma, beta = film(aux)`,
+      `f = f * (1 + gamma) + beta`, then the unchanged head. `film` is `Linear(4,64)-GELU-
+      Linear(64,64)-GELU-Linear(64, 2*feature_dim)` with the **last layer zero-initialized**, so
+      at iteration 0 the model is numerically the `scale_film: false` model and the arm
+      measures the feature, not a perturbed head. Config flag `scale_film: bool = False`.
+
+      **Features** (`scale_feats(mask)` in `cropcls/crops.py`), from the instance's own
+      **undilated** mask in frame pixels, before any letterbox: long and short side of
+      `cv2.minAreaRect` over the mask pixels, `sqrt(area)`, and `fill = area / (long*short)`,
+      as `log2(long/256), log2(short/32), log2(sqrt(area)/64), fill`. Not the axis-aligned box
+      the design note proposed: its long edge shrinks with rotation, and measured on set C it
+      separates the length levels at 38-52% where the rectangle reaches 90-98%. The rectangle is
+      invariant to the 90-degree rotation augmentation, so `aux` does not change with `deg`.
+      Edge-cut instances get the same features (their length is short); the trunk sees the cut.
+
+      **Plumbing - aux is computed on every path, always.** Not only when `scale_film` is on:
+      that keeps the three crop paths from diverging by config, which is exactly the silent
+      failure `to_model_input` warns about. `CropBatch` gains `aux (B,4)`; the static
+      `CropFolder.__getitem__` returns `(x, aux, label)`; `cropcls/export.py` (the path that
+      produces `classaware_f1`) and `train_cropcls.py` (train loop and `evaluate`) pass
+      `model(x, aux)`. `CropClassifier.forward(x, aux=None)` **raises** when `scale_film` is on
+      and `aux` is None, so a missed call site fails loudly instead of scoring a worse number.
+      Tools that call the model (`confidence_metrics`, `class_report`, `loss_breakdown`,
+      `viz_misclassified`, `augment_probe`) pass `aux` too.
+
+      **Resolution assumption.** `aux` is in frame pixels, and the static folder stores patches
+      at native resolution while the val mapper feeds the detector native 1024x1024 frames, so
+      train and score agree. A resize in either mapper would shift every feature; not guarded
+      beyond this note.
+
+      **Static folder needs no re-extraction.** Alpha is the undilated predicted mask and the
+      stored patch contains all of it, so the rectangle of the patch mask equals the rectangle
+      of the full-frame mask. Do NOT read size off the PNG dimensions (design note section 6
+      point 6).
+
+      **Arms.** Base `configs/cropcls/setc_cp_cxt_c448.yaml`. Control: same file,
+      `scale_film=false`; FiLM arm: `scale_film=true`; each with its own `output_dir=`, seeds 0
+      and 1 (seed variance 0.82 points). The existing `runs/20261109083120_setc_cp_cxt_c448` is
+      NOT reused as control: it was trained before this code change.
+
+      **Rank by `classaware_f1`** from `HungarianInstanceEvaluator`, `score_mode=detector`, on
+      `val_set_c_mm-1.0x` (the config's own val). Also reported, not ranked:
+      `val_set_c_single_mm-1.0x` and `val_set_c_cpocc_mm-1.0x`, and exact / family / +-10 mm
+      top-1 on matched detections.
+
+      **Verify** - `tests/test_cropcls_scale_film.py` (new) and `tests/test_cropcls_crop_folder.py`:
+      `scale_feats` of a rasterized W x H rectangle gives long/short within 1 px of max/min(W,H)
+      and is identical for the mask and each `rot90` of it; the `scale_film` model's logits equal
+      the plain model's at init with the shared weights copied over, and one optimizer step moves
+      the FiLM output layer off zero; `forward(x)` without `aux` raises when `scale_film` is on;
+      the static folder's `aux` equals `scale_feats` of the full-frame mask the patch was cut
+      from, and the live path (`CropPipeline.build_batch`) and the scoring path
+      (`cropcls/export.py`) feed the model exactly `scale_feats` of the same undilated
+      full-frame mask - checked by capturing the `aux` each path passes to a stub model, so an
+      `aux` taken from the letterboxed or dilated mask fails; `CropBatch.aux` has one row per
+      crop.
+
+      **Decision rule, fixed before the runs.** FiLM wins if its mean `classaware_f1` over seeds
+      0 and 1 on `val_set_c_mm-1.0x` beats the control's mean by more than 1.6 points (2x seed
+      variance), and loses if it is more than 1.6 points worse; in between is a tie. To compare
+      against the post-hoc fusion, which has no `classaware_f1`, report exact top-1 on matched
+      detections from `pred_length_pass.py`-style output for both arms, against the post-hoc
+      0.610 (fixed product) and 0.641 (learned weight) on piles and 0.894 / 0.924 on single.
+
+      **Out of scope for Step 12:** detector score or other reliability inputs to `film` (not
+      available in the static folder without re-extraction); additive-logit fusion; a
+      scale-preserving crop.
+
+      **Outcome, 2026-11-11: no significant change.** Three seeds per arm, matching the other
+      runs in this file. Runs in `/data/janick.bilang/runs/film_step12`, compared with
+      `compare.py` there; results in `cropcls-results.md` section 11. Piles `classaware_f1`
+      (seeds 0-2, mean +- sd): control 55.24 +- 3.05, FiLM 52.93 +- 4.05, difference -2.3,
+      paired t-test p = 0.20. Single and cp-occ show the same picture (-1.2, p = 0.62 / 0.47).
+      The pre-registered 1.6-point threshold assumed a seed sd of 0.82; the measured sd is about
+      3, so the threshold is not used for the verdict. A fourth seed was run and agrees (4-seed
+      gap -1.9). Why: a test-time shift of the length feature by about one length step changed
+      0 of 1127 single-set predictions (`film_s1`; 1 for the warm-start run, single set only).
+      The film output layer ends near zero (abs max 0.013-0.034), and train loss reaches
+      0.002-0.005 on appearance alone. So the network does not pick up the scale input. The
+      length information is still useful: the post-hoc length product adds about +6 points of
+      exact top-1 on piles to every run. **Added beyond the Arms item:** one diagnostic
+      warm-start arm, n=1 (`filmwarm_s0`, FiLM from `20261109083120_setc_cp_cxt_c448`, 2000 it).
+      It needs the `strict=False` film.*-only load in `train_cropcls.py`. **Added beyond
+      Resolution assumption:** `validate()` rejects `scale_film` with `augment_frames`.
+      **Features as built:** +1 px per minAreaRect side (pixel extent), fill clipped to 1.
+      Verify: `tests/test_cropcls_scale_film.py` and `tests/test_cropcls_crop_folder.py` pass
+      (full suite 412).
+
+- [x] **Step 13 - fixed length and width prior on the logits** (`requirements_length_prior.md`).
+      Step 12 showed the network does not learn to use size from an input, while a post-hoc
+      product of the classifier with a length likelihood adds ~6 points of exact top-1 on piles.
+      This step puts that product into the model during training, with its strength fixed, so the
+      trunk no longer has to recover the length level from appearance (the user's hypothesis:
+      "if we fix k before hand we would take away the burden of the classifier to extract the
+      length, sucht that it can focus on appearance more").
+
+      **Not the user's scalar form.** `f = f * (alpha*length + beta*width)` multiplies every pooled
+      feature by one number `s` per crop. The head is linear, so the logits become
+      `s * a_c(f) + b_c`: size enters only through one scalar shared by all classes and all
+      families, so it can at most move the decision along one line (and flip the ranking when
+      `s < 0`). It cannot place a separate peak at each length level of each family. The user
+      went on with the fixed Gaussian term ("start with it"). It is not built. Length and width
+      are kept as the two inputs, as the user asked.
+
+      **Design.** For crop `i` and class `c`, with `L`, `W` the long and short side of the
+      instance mask's minimum-area rectangle (`scale_feats`, +1 px, frame pixels):
+      `logit_ic = head(f_i)_c + k * (g_L(i,c) + g_W(i,c))`, where for `v` in {L, W}
+      `g_v = log((1 - floor) * exp(q - max_c q) + floor)` and `q = -0.5 * ((v - mu_vc)/sd_vc)^2 - log sd_vc`.
+      It is a Gaussian likelihood per class, scaled to peak 1, mixed with a floor. When the mask
+      touches the frame border, `g_L = g_W = 0` for all classes ("edge off"). Fixed, not learned:
+      `k = 1`, `floor = 0.02`. With `k = 1` this is, up to a per-row constant, exactly
+      `log p_cls + log lik`. For the length term alone this is exactly `compare.py`'s `posthoc`;
+      with width it is the product of two separately floored likelihoods. The term is computed in
+      float32 outside autocast: under fp16, `z^2` overflows at a few hundred px of deviation and
+      `-inf - -inf` gives NaN. Config: `length_prior: bool =
+      False`, `length_stats: str` (path), `length_prior_k: float = 1.0`,
+      `length_prior_floor: float = 0.02`. The model holds `mu`, `sd` as buffers (saved in the
+      checkpoint). `model.use_length_prior = False` drops the term for the appearance-only
+      diagnostic; the per-detection pass (`/data/janick.bilang/runs/occ_analysis/pred_length_pass.py`,
+      untracked) exposes it as `--no-prior`.
+
+      **Statistics.** `tools/length_stats.py` reads a static crop folder and writes a JSON with
+      per-class median and robust sd (1.4826 * MAD) of `L` and `W`. It uses only crops whose mask
+      does not touch the frame edge, with sd floored at 3 px (L) and 1.5 px (W). For set C it is
+      run on `crops/setc_train_cp`, the classifier's own training crops, so no val data enters
+      the prior. The JSON stores `class_names`. Loading raises unless they equal the model's
+      class order (`meta.json` order, not `sorted()`): a permuted mu/sd would raise nothing.
+      `length_stats.py` raises on `min_border_px` missing or < 1, for the same reason as
+      `CropFolder` below. These copy-paste crops include occluders, so their median L may sit
+      short of the single set's; both stats files are reported side by side. *(Postflight: done as the training stats file
+      vs L/W measured on the single val set's detections by `pred_length_pass.py`
+      (`prior_step13/stats_side_by_side.py`), not a second `length_stats.py` file; the two
+      measurements differ by the +1 px of `scale_feats`, noted in the results.)* Both arms use this one file. Measured on the frozen controls with stats from the
+      single val set, adding the width term to the length term raised piles exact by +0.3 to
+      +1.2 (3 runs) and left cp-occ unchanged.
+
+      **Edge flag on every path.** `scale_feats` gains a 5th element: 1.0 if any mask pixel lies
+      on the array border. On the live and export paths the mask is full-frame, so this is "the
+      mask touches the frame". In the static folder the mask is the stored patch. The patch is the
+      tight box grown by `pad_frac` and clipped at the frame, and `meta.json` `min_border_px` is
+      the smallest unclipped border. So when `min_border_px >= 1`, the patch mask touches the patch
+      border only on a clipped side, i.e. exactly when it touches the frame. `CropFolder` raises
+      when `length_prior` is on and `min_border_px` is missing or < 1. `SCALE_FEAT_DIM` stays 4
+      (the FiLM input, so Step 12 checkpoints keep working); a new `AUX_DIM = 5` is the width of
+      `aux`, including the empty-batch zeros in `data.py`. FiLM reads `aux[:, :SCALE_FEAT_DIM]`.
+      Edge-off zeroes the width term too, matching arm A's product exactly. A frame-clipped tool
+      may still have a good width, but splitting the rule would make A and B differ in more than
+      training.
+
+      **Arms, seeds 0-2.** Base `configs/cropcls/setc_cp_cxt_c448.yaml`.
+      A (control + product): the existing `film_step12` `ctrl_s0..2` checkpoints, evaluated with
+      `length_prior=true` and the same stats file. A checkpoint without the prior buffers loads
+      with only those keys missing, filled from the file. No retraining. The weight-loading logic
+      moves from `train_cropcls.py` main into a function, `load_weights`, so it can be tested. It
+      tolerates missing `film.*` (FiLM warm start) and/or missing prior buffers, and nothing else.
+      When a checkpoint carries prior buffers that differ from the `length_stats` file, it raises.
+      B (joint): train with `length_prior=true`, same file, `k = 1`, seeds 0-2.
+      C (B + length dropout) is deferred by the user until B is read.
+
+      **Rank** by `classaware_f1` (Hungarian, `score_mode=detector`) on `val_set_c_mm-1.0x`. Also
+      reported: `val_set_c_single_mm-1.0x` and `val_set_c_cpocc_mm-1.0x`, and exact / family /
+      +-10 mm top-1 on matched detections. Report mean +- sd over the three seeds and a paired
+      t-test B vs A by seed. With n = 3 (the user's seed count) the test only detects a large
+      effect, and "no significant change" is the likely reading of a small one. **Decision rule, fixed before the runs:** B is better if its mean is
+      higher and paired p < 0.05; worse if lower with p < 0.05; otherwise "no significant change".
+      **Diagnostic for the hypothesis:** B and A with the prior switched off at inference
+      (appearance only). If B's trunk focuses on appearance, B-without-prior has higher family
+      top-1 than A-without-prior. Reported, not ranked.
+
+      **Verify** - `tests/test_cropcls_length_prior.py` (new):
+      - the length-only term equals `compare.py`'s `posthoc` likelihood on hand-made L, mu, sd,
+        and the L+W term equals the sum of the two floored log-likelihoods;
+      - the term is float32 and finite under fp16 autocast for L, W far from every class;
+      - a stats file with a different class order raises;
+      - with the prior on, argmax equals argmax of `softmax(head) * lik`;
+      - an edge crop gets an all-zero term;
+      - `use_length_prior = False` returns exactly `head(f)`;
+      - mu and sd are buffers, are in the state dict, and are not optimizer parameters;
+      - `load_weights` loads a plain checkpoint into a prior model (buffers from the file), a
+        plain checkpoint into a FiLM + prior model, and raises on any other missing key and on a
+        checkpoint whose buffers differ from the file;
+      - the 5th aux element is 1 for a mask on the frame edge and 0 otherwise, and the static
+        folder's edge flag equals the full-frame mask's for a patch clipped at the frame and one
+        that is not;
+      - `CropFolder` and `length_stats.py` raise without `min_border_px`;
+      - `length_stats.py` output excludes edge crops and applies the sd floors;
+      - `aux` is `AUX_DIM` wide on the live, static, export and empty-batch paths; *(postflight:
+        live is asserted, static and export via equality with `scale_feats`; the empty-batch
+        zeros in `data.py` need a detector to reach and are checked by reading only)*;
+      - `validate()` rejects `length_prior` with `augment_frames` and without a readable
+        `length_stats`.
+      Existing Step 12 tests still pass with `aux` now 5 wide. `cropcls/README.md` gains rows for
+      the edge flag's static-folder equivalence and for the float32 prior.
+
+      **Out of scope for Step 13:** learned `k` or floor; the occluder-channel gate (planned
+      Step 14); length dropout (arm C); any change to the detector.
+
+      **Outcome, 2026-11-11: no significant change, B lower on every set.** Piles classaware_f1
+      A 61.84 +- 2.16 vs B 57.75 +- 0.48 (paired p = 0.081); single 88.49 vs 85.95 (p = 0.26);
+      cp-occ 80.67 vs 78.71 (p = 0.19). By the decision rule this is "no significant change".
+      The diagnostic goes against the hypothesis: with the prior off, B's family top-1 on piles is
+      0.689 vs A's 0.750 (exact 0.495 vs 0.564), so training with the fixed prior made the trunk
+      worse at appearance, not better. Arm A itself (control + product at inference) is +6.6
+      piles f1 over the Step 12 control (55.24 -> 61.84, p = 0.019, same checkpoints), so on this
+      evidence the prior belongs at inference as a product, not in training. The prior's length sd is at its 3 px floor for 22 of 23 classes on
+      the training crops while the val single set measures 4-11 px; that mismatch is recorded in
+      `cropcls-results.md` section 12. Results and scripts: `/data/janick.bilang/runs/prior_step13`. The diagnostic paired p,
+      A vs control, and the train- vs val-stats product are follow-ups outside the decision
+      rule (`followups13.py`); `compare.py` here means `/data/janick.bilang/runs/film_step12/compare.py`
+      (untracked).
 - [x] **Step 11b - occluder channel on set C** (`requirements_occlusion_channel.md`, 2026-11-11/12,
       branch 59). Config `configs/cropcls/setc_occ5_cxt_c448.yaml`. Copy-paste crops
       `crops/setc_train_cp`, which already have `.occ.png` sidecars (pad 0.2). Both arms use

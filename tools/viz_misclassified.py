@@ -31,7 +31,7 @@ import maskdino  # noqa: F401  - registers the hdf5 datasets
 from cropcls.config import load_config
 from cropcls.data import CropPipeline, apply_truncated_filter, apply_val_stride
 from cropcls.detector import FrozenSingleClassDetector
-from cropcls.modeling import build_classifier
+from cropcls.modeling import build_classifier, load_weights
 
 COLS = [
     "frame", "pred_index", "gt_class", "pred_class", "p_pred", "p_gt",
@@ -70,8 +70,9 @@ def collect(model, pipe, device, max_frames=None):
         if len(batch) == 0:
             continue
         x = batch.crops.to(device, non_blocking=True)
+        aux = batch.aux.to(device, non_blocking=True)
         with torch.autocast("cuda", dtype=torch.float16, enabled=device.type == "cuda"):
-            logits = model(x)
+            logits = model(x, aux)
         prob = F.softmax(logits.float(), dim=1).cpu()
         pred = prob.argmax(1)
         total += len(batch)
@@ -159,9 +160,9 @@ def main():
 
     det = FrozenSingleClassDetector(cfg, device=args.device)
     pipe = CropPipeline(cfg, det, cfg.val_dataset, is_train=False)
-    model = build_classifier(cfg, len(pipe.class_names)).to(device)
+    model = build_classifier(cfg, len(pipe.class_names), pipe.class_names).to(device)
     state = torch.load(cfg.weights, map_location="cpu", weights_only=False)
-    model.load_state_dict(state["model"])
+    load_weights(model, state, cfg)
     model.eval()
     print(f"weights={cfg.weights} (iter {state.get('iteration')})  mask_dilate={cfg.mask_dilate}")
 
