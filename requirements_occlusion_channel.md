@@ -56,3 +56,13 @@ wrong, this arm is built on a misreading and should be stopped.
 instance masks in the frame, not GT masks. Rationale: predictions are available identically at
 training and inference time, so the channel cannot become a train-only oracle. GT occluders
 would not exist at inference. Flagged because the verbatim ask does not distinguish them.
+
+---
+
+## 2026-11-11, branch 59: the channel on set C
+
+> Here i want to test out the impact of the occlusion channel. see if this improves something or not. test it on set c our currently worst set. I want to see if the network learns that legnth parameters are not reliable if the object ends in a pile.
+
+## 2026-11-12, scope of the first step
+
+> how about we first just test if the additional channel helps, on the normal training, see its impact then continue with the hyptohesis that length estimated helps when occlusion channel is available. The current hypothesis would be, classifier profits from occlusion knowledge, since we saw that the classisifer learns some kind of size parameter already on its own, lets see if occlusion channel helps to furhter improve.
