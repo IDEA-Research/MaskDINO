@@ -469,24 +469,17 @@ No `metrics.py`: top-1 lives in `train_cropcls.evaluate`, the timing table in
       IoU are identical across arms, as they must be with the same frozen segmenter. The
       length-prior follow-up needs branch 56's prior code, which this branch does not have.
 
-- [x] **Step 11c - camera-jittered training renders on set C** (2026-11-16, branch 59).
-      `train_phase2_set_c_jitter_mm-1.0x` has the same 460 single-tool frames (20 per
-      instrument), re-rendered with `camera_jitter` (1 deg, 1 cm). Measured against the
-      original, the tool shifts by a median of 37 px, and its length changes by an sd of 5.7 px
-      (±1.5%) against a 20 px class step. Config `configs/cropcls/setc_jitonly_cxt_c448.yaml`,
-      copy-paste crops `crops/setc_train_jit_cp` (27575 crops). Same as the Step 11b control
-      otherwise (no occluder channel, pad 0.10). 3 seeds. Runs are in
-      `/data/janick.bilang/runs/jitonly_setc`.
+- [x] **Step 11c - check: camera-jittered training renders** (2026-11-16, branch 59).
+      `train_phase2_set_c_jitter_mm-1.0x`: the same 460 frames (20 per instrument), camera
+      jittered by 1 deg / 1 cm. Run as the Step 11b control with
+      `train_dataset=train_phase2_set_c_jitter_mm-1.0x crop_folder=crops/setc_train_jit_cp`,
+      3 seeds, runs in `/data/janick.bilang/runs/jitonly_setc`.
 
       | val set | original renders | jittered renders | diff | paired p |
       |---|---|---|---|---|
       | piles | 52.02±1.57 | 55.15±1.03 | +3.13 | 0.041 |
       | single | 83.11±1.26 | 83.41±0.92 | +0.30 | 0.76 |
       | cp-occ | 75.38±0.91 | 76.02±1.21 | +0.65 | 0.64 |
-
-      At most a small piles gain, borderline at 3 seeds. Single and cp-occ are unchanged. The
-      jittered set is also a new render (new noise, new copy-paste composites), so a
-      non-jittered re-render would be needed to attribute the piles gain to the camera.
 
 **Out of scope (explicit):** phase 2 / set B, COCO AP as a headline metric (argmax cannot hedge
 the way `instance_inference`'s `topk(100)` does), any modification to `maskdino/` or `train_net.py`. The owner made a change to register_hdf5_instance.py, in order to register the dataset correctly, this change is approved. (That change has since been superseded by `maskdino/data/datasets/images_root.py`, which resolves the images root from `$SURGICAL_IMAGES_ROOT` or a single `~/training/images_*` match; same approval, same carve-out.)
