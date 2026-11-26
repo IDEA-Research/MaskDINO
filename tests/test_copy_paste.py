@@ -109,7 +109,6 @@ def compositor_factory(tmp_path):
             mask_interp=("nearest",),
             blend_modes=("none",),
             blur_kernel_range=(3, 7),
-            feather_width_range=(2, 7),
             core_margin_px=2,
             image_format="BGR",
             cluster_prob=0.0,
@@ -448,8 +447,8 @@ def test_blend_box_blur_softens_edge(compositor_factory):
 
 
 def test_core_margin_protects_object_interior(compositor_factory):
-    # gaussian_blur_edge/box_blur/alpha_feather all ramp symmetrically, so a large
-    # enough kernel/width would otherwise blend a chunk of the object's own
+    # gaussian_blur_edge/box_blur both ramp symmetrically, so a large
+    # enough kernel would otherwise blend a chunk of the object's own
     # interior with the destination background. core_margin_px must force alpha=1
     # more than that many px inside the mask, regardless of kernel size.
     compositor, _ = compositor_factory(
@@ -507,6 +506,36 @@ def test_poisson_not_in_default_blend_modes():
     assert "poisson" not in default_blend_modes
     assert "gaussian_blur_edge" in default_blend_modes
     assert "box_blur" in default_blend_modes
+
+
+def test_alpha_feather_blend_mode_is_removed(compositor_factory):
+    """alpha_feather was removed in #64. A config that still lists it must fail when
+    the compositor is built, not paste with a silently different blend mix."""
+    with pytest.raises(ValueError, match="#64"):
+        compositor_factory(blend_modes=("none", "alpha_feather"))
+
+
+def test_saved_config_with_feather_width_range_still_merges(tmp_path):
+    """Saved run configs carry FEATHER_WIDTH_RANGE, removed in #64. A strict merge
+    must skip it instead of raising KeyError, and still merge the keys next to it."""
+    from detectron2.config import get_cfg
+
+    saved = tmp_path / "config.yaml"
+    saved.write_text(
+        "VERSION: 2\n"
+        "INPUT:\n"
+        "  COPY_PASTE:\n"
+        "    FEATHER_WIDTH_RANGE: [3, 5]\n"
+        "    BLUR_KERNEL_RANGE: [3, 5]\n"
+    )
+    cfg = get_cfg()
+    add_maskdino_config(cfg)
+    add_maskdino_config(cfg)  # yacs asserts on registering a deprecated key twice
+    cfg.merge_from_file(str(saved))
+
+    assert "FEATHER_WIDTH_RANGE" not in cfg.INPUT.COPY_PASTE
+    assert cfg.INPUT.COPY_PASTE.BLUR_KERNEL_RANGE == [3, 5]
+    assert cfg.key_is_deprecated("INPUT.COPY_PASTE.FEATHER_WIDTH_RANGE")
 
 
 def test_blend_poisson_applies_when_selected(compositor_factory):

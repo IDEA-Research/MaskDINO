@@ -121,7 +121,6 @@ class Hdf5CocoInstanceDatasetMapper:
                 "mask_interp": tuple(cfg.INPUT.COPY_PASTE.MASK_INTERP),
                 "blend_modes": tuple(cfg.INPUT.COPY_PASTE.BLEND_MODES),
                 "blur_kernel_range": tuple(cfg.INPUT.COPY_PASTE.BLUR_KERNEL_RANGE),
-                "feather_width_range": tuple(cfg.INPUT.COPY_PASTE.FEATHER_WIDTH_RANGE),
                 "core_margin_px": cfg.INPUT.COPY_PASTE.CORE_MARGIN_PX,
                 "image_format": cfg.INPUT.FORMAT,
                 "cluster_prob": cfg.INPUT.COPY_PASTE.CLUSTER_PROB,

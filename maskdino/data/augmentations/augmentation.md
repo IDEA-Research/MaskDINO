@@ -49,7 +49,7 @@ returned annotations stay modal (visible-region-only, never amodal).
 | `_ensure_rngs` | lazily (re)seeds the private jitter/perspective streams, keyed on DataLoader worker index (see Random streams) |
 | `_shift_hue` / `_luma_weights` | hue rotation via 8-bit HSV (0-179 half-degrees), and the Rec.601 luma weights in the configured channel order |
 | `_blend` | picks a blend mode per instance, computes per-pixel `alpha`, composites `alpha*patch + (1-alpha)*region` |
-| `_protect_core` | forces `alpha=1.0` more than `core_margin_px` inside the mask, so a wide blur/feather can't erode the object's own interior |
+| `_protect_core` | forces `alpha=1.0` more than `core_margin_px` inside the mask, so a wide blur can't erode the object's own interior |
 | `_blend_poisson` | `cv2.seamlessClone`-based blend; opt-in only (not in the default `blend_modes`) |
 
 ## Blend modes (`_blend`)
@@ -58,7 +58,6 @@ returned annotations stay modal (visible-region-only, never amodal).
 |---|---|
 | `none` | hard 0/1 mask, no ramp |
 | `gaussian_blur_edge` / `box_blur` | blur the hard mask itself with a random odd kernel from `blur_kernel_range`; naturally continuous since it's one linear filter pass |
-| `alpha_feather` | two independent Euclidean-distance ramps (`dist_in` inside, `dist_out` outside), `width ~ U(*feather_width_range)`, stitched via `np.where(patch_mask, ...)`. **Not recommended** — qualitatively bad visual results, not just the boundary bug below |
 | `poisson` | gradient-domain seamless cloning; falls back to `none` if it can't be solved or the patch would spill past the canvas edge |
 
 ## Placement (`_place`, `_cluster_sigma`, `_sample_cluster_center`)
@@ -145,13 +144,6 @@ across invocations.
 
 ## Known limitations
 
-- **`alpha_feather` is not recommended** — qualitatively bad visual results in practice, beyond
-  just the boundary bug below; that's why it's excluded from `BLEND_MODES`'s default (see
-  Config). `dist_in`/`dist_out` each start counting from 1 (not 0) at the first pixel on their
-  own side, so the two ramps don't join continuously — alpha dips right at the true edge
-  instead of rising smoothly through it. Not thickness-dependent (it happens at every
-  boundary), but its impact is negligible on thick objects (a 1px blemish swallowed by a large
-  opaque interior) and much more visible on thin ones (no interior left to dilute it).
 - **Thin structures can wash out under `gaussian_blur_edge`/`box_blur`.** `_protect_core`'s
   erosion can fully erase a thin object's "core" (nothing survives to force back to
   `alpha=1`), and a wide kernel then blurs across the *entire* object from both edges at once.
@@ -160,7 +152,7 @@ across invocations.
   `blur_kernel_range`'s upper bound modest for domains with thin instrument features (finger
   loops, blades).
 - **Occlusion bookkeeping uses the hard silhouette, not the soft alpha actually painted.**
-  `layer["visible"] &= ~full_mask` is a binary cut; at a feathered/blurred boundary pixel the
+  `layer["visible"] &= ~full_mask` is a binary cut; at a blurred boundary pixel the
   underlying layer may still be mostly visible pixel-wise, but the GT mask treats it as fully
   occluded. Believed intentional (blending is photometric camouflage only; GT should stay
   geometrically exact) rather than a bug.
@@ -173,9 +165,9 @@ across invocations.
 | `MIN_INSTANCES` / `MAX_INSTANCES` | `0` / `10` | range for `k`, the number of paste attempts per sample |
 | `ROTATION_DEGREES` | `30.0` | `θ ~ U(-this, +this)`; MBOI itself uses `U(-90, 90)` |
 | `MASK_INTERP` | `["nearest"]` | list of eligible modes, randomized per instance like `BLEND_MODES`: `"nearest"` (blocky, bit-exact mask), `"linear"`/`"bicubic"`/`"lanczos"` (anti-aliased, mask thresholded at 0.5). `"bicubic"`/`"lanczos"` genuinely ring (~15-20% brightness overshoot at a high-contrast edge in testing) unlike `"linear"`'s pure convex combination — saturates safely into `uint8`, doesn't jaggy up the mask boundary, but is a real visible artifact tradeoff |
-| `BLEND_MODES` | `["none", "gaussian_blur_edge", "box_blur"]` | randomized per pasted instance; `"poisson"` is implemented but deliberately excluded by default (hurt in Cut-Paste-and-Learn's own ablation); `"alpha_feather"` is excluded too and **not recommended** — qualitatively bad visual results (see Limitations) |
+| `BLEND_MODES` | `["none", "gaussian_blur_edge", "box_blur"]` | randomized per pasted instance; `"poisson"` is implemented but deliberately excluded by default (hurt in Cut-Paste-and-Learn's own ablation). `"alpha_feather"` was removed in #64 and now raises `ValueError` |
 | `BLUR_KERNEL_RANGE` | `[3, 7]` | odd kernel size range for `gaussian_blur_edge`/`box_blur`; also sets the cache's crop margin (`upper // 2 + 1`) |
-| `FEATHER_WIDTH_RANGE` | `[2, 7]` | ramp width range for `alpha_feather` |
+| `FEATHER_WIDTH_RANGE` | removed (#64) | registered as a deprecated key: a saved config that sets it still loads. A strict merge drops the value with a warning; a loader that calls `set_new_allowed(True)` first keeps it as an unused stray key, without a warning |
 | `CORE_MARGIN_PX` | `2` | how far inward from any boundary `_protect_core` forces `alpha=1`; `0` disables it (restores the old fully-symmetric ramp) |
 | `CLUSTER_PROB` | `0.0` | `p` — probability a frame uses the Gaussian (concentrated) placement component instead of uniform; `0` restores pure uniform scatter |
 | `CLUSTER_RADIUS_FRACTION` | `0.25` | `r` — the Gaussian's 2σ (≈95%) footprint radius as a fraction of the shorter side; `σ = r · min(H,W) / 2` |

@@ -35,7 +35,6 @@ import cv2
 import h5py
 import numpy as np
 from pycocotools import mask as mask_util
-from scipy import ndimage
 from sgdata import schema
 
 __all__ = ["CopyPasteCompositor"]
@@ -256,7 +255,6 @@ class CopyPasteCompositor:
         mask_interp,
         blend_modes,
         blur_kernel_range,
-        feather_width_range,
         core_margin_px,
         image_format,
         cluster_prob,
@@ -270,8 +268,12 @@ class CopyPasteCompositor:
         self.rotation_degrees = rotation_degrees
         self.mask_interp = tuple(mask_interp)
         self.blend_modes = tuple(blend_modes)
+        if "alpha_feather" in self.blend_modes:
+            raise ValueError(
+                "copy-paste blend mode 'alpha_feather' was removed in #64; "
+                "drop it from INPUT.COPY_PASTE.BLEND_MODES"
+            )
         self.blur_kernel_range = tuple(blur_kernel_range)
-        self.feather_width_range = tuple(feather_width_range)
         self.core_margin_px = core_margin_px
         self.image_format = image_format
         self.cluster_prob = cluster_prob
@@ -560,7 +562,7 @@ class CopyPasteCompositor:
         # itself, so the corners outside the rotated rectangle are synthetic
         # borderValue=0 (black) fill, not real image content. patch_mask already
         # excludes that zone (it's warped with the same borderValue=0), but a
-        # blur/feather alpha ramp doesn't know "real background fading out" from
+        # blur alpha ramp doesn't know "real background fading out" from
         # "synthetic black padding" - without this, it can pull genuine black into
         # the blend near a thin object's tip, where the padding sits close to the
         # boundary. valid_footprint marks exactly which pixels are real (rotated
@@ -785,20 +787,10 @@ class CopyPasteCompositor:
             alpha = cv2.blur(patch_mask.astype(np.float32), (k, k))
             alpha = np.clip(alpha, 0.0, 1.0)
             alpha = self._protect_core(alpha, patch_mask)
-        elif mode == "alpha_feather":
-            width = random.randint(*self.feather_width_range)
-            dist_in = ndimage.distance_transform_edt(patch_mask)
-            dist_out = ndimage.distance_transform_edt(~patch_mask)
-            alpha = np.where(
-                patch_mask,
-                np.clip(dist_in / max(width, 1), 0.0, 1.0),
-                np.clip(1.0 - dist_out / max(width, 1), 0.0, 1.0),
-            ).astype(np.float32)
-            alpha = self._protect_core(alpha, patch_mask)
         else:
             raise ValueError(f"unknown copy-paste blend mode: {mode}")
 
-        # Never let a blur/feather ramp pull in the synthetic black borderValue
+        # Never let a blur ramp pull in the synthetic black borderValue
         # fill from outside the rotated rectangle (see _transform_instance's
         # valid_footprint comment) - only real (rotated crop) pixels may blend.
         alpha = np.where(valid_footprint, alpha, 0.0).astype(np.float32)
@@ -808,12 +800,12 @@ class CopyPasteCompositor:
 
     def _protect_core(self, alpha, patch_mask):
         """Force alpha=1.0 more than core_margin_px inside the mask. gaussian_blur
-        _edge/box_blur/alpha_feather all ramp symmetrically around the true
-        boundary, softening up to ~half the kernel/feather width INTO the object's
+        _edge/box_blur both ramp symmetrically around the true
+        boundary, softening up to ~half the kernel width INTO the object's
         own interior - for a thin instrument that can meaningfully blur/erode its
         real appearance. Capping the inward reach at a small fixed margin (default
         2px) keeps the softening confined to the true boundary transition band,
-        regardless of how large a kernel/width was sampled for the outward
+        regardless of how large a kernel was sampled for the outward
         (into-background) side."""
         if self.core_margin_px <= 0:
             return alpha

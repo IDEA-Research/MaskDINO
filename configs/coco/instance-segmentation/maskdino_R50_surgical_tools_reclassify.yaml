@@ -56,7 +56,7 @@ INPUT:
     MIN_INSTANCES: 0
     MAX_INSTANCES: 10
     MASK_INTERP: ["linear", "bicubic","lanczos"]  # any of "nearest" | "linear" | "bicubic" | "lanczos"
-    BLEND_MODES: ["none", "gaussian_blur_edge", "box_blur"] # "alpha_feather"
+    BLEND_MODES: ["none", "gaussian_blur_edge", "box_blur"]
     # Validation frames show instrument piles concentrated in a small region,
     # not scattered uniformly - "clustered pile" placement mimics this on a
     # fraction of training frames, additively to the uniform placement above.

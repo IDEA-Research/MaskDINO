@@ -53,7 +53,7 @@ comp = CopyPasteCompositor(
     src, min_instances=a.min_paste, max_instances=a.max_paste,
     rotation_degrees=cp.ROTATION_DEGREES, mask_interp=tuple(cp.MASK_INTERP),
     blend_modes=tuple(cp.BLEND_MODES), blur_kernel_range=tuple(cp.BLUR_KERNEL_RANGE),
-    feather_width_range=tuple(cp.FEATHER_WIDTH_RANGE), core_margin_px=cp.CORE_MARGIN_PX,
+    core_margin_px=cp.CORE_MARGIN_PX,
     image_format="RGB", cluster_prob=cp.CLUSTER_PROB,
     cluster_radius_fraction=a.cluster_radius if a.cluster_radius is not None else cp.CLUSTER_RADIUS_FRACTION,
     cluster_stray_fraction=a.stray if a.stray is not None else cp.CLUSTER_STRAY_FRACTION,

@@ -278,11 +278,17 @@ def add_maskdino_config(cfg):
         "none",
         "gaussian_blur_edge",
         "box_blur",
-    ]  # "alpha_feather"
+    ]
     cfg.INPUT.COPY_PASTE.BLUR_KERNEL_RANGE = [3, 7]
-    cfg.INPUT.COPY_PASTE.FEATHER_WIDTH_RANGE = [2, 7]
-    # gaussian_blur_edge/box_blur/alpha_feather all ramp symmetrically around the
-    # true boundary, so a large kernel/width can bleed the softening well into the
+    # FEATHER_WIDTH_RANGE belonged to the "alpha_feather" blend mode, removed in #64.
+    # Saved run configs still carry it, so a strict merge skips it with a warning
+    # instead of raising KeyError.
+    try:
+        cfg.register_deprecated_key("INPUT.COPY_PASTE.FEATHER_WIDTH_RANGE")
+    except AssertionError:  # already registered: add_maskdino_config ran twice on this cfg
+        pass
+    # gaussian_blur_edge/box_blur both ramp symmetrically around the
+    # true boundary, so a large kernel can bleed the softening well into the
     # object's own interior - blurring/eroding a thin instrument's real appearance.
     # This caps how many px inward the softening may ever reach (0 disables the
     # cap, restoring the old symmetric-ramp behavior); the outward (into-
